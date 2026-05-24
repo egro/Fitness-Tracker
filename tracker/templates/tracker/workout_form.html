@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Start Workout{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Start Workout</h1>
+
+<form method="post" class="bg-white rounded-xl shadow p-4 max-w-md">
+    {% csrf_token %}
+
+    <div class="mb-4">
+        <label class="block mb-2 font-medium">Use a template (optional)</label>
+        <select name="template" class="block w-full rounded border-gray-300 border px-3 py-2">
+            <option value="">-- No template (blank workout) --</option>
+            {% for tpl in templates %}
+            <option value="{{ tpl.pk }}">{{ tpl.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <p class="text-gray-500 text-sm mb-4">or start with a blank workout for today:</p>
+
+    <label class="block mb-4">
+        <span class="text-gray-700">Date</span>
+        <input type="date" name="date" value="{{ today }}" max="{{ max_date }}" required
+               class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
+    </label>
+
+    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Start Workout</button>
+    <a href="{% url 'tracker:workout_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
+</form>
+
+{% endblock %}

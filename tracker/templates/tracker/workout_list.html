@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Workout History{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Workout History</h1>
+    <a href="{% url 'tracker:workout_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ New</a>
+</div>
+
+<div class="space-y-3">
+    {% for w in workouts %}
+    <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex justify-between items-start">
+            <div>
+                <a href="{% url 'tracker:workout_detail' w.pk %}" class="text-lg font-bold hover:text-blue-600">
+                    {{ w.date }}
+                </a>
+                {% if w.template %}
+                <span class="text-gray-500 ml-2">{{ w.template.name }}</span>
+                {% endif %}
+                <div class="text-sm text-gray-400 mt-1">
+                    {{ w.exercises.count }} exercise{{ w.exercises.count|pluralize }}
+                    {% if w.duration_minutes %} &middot; {{ w.duration_minutes }} min{% endif %}
+                </div>
+            </div>
+            <a href="{% url 'tracker:workout_delete' w.pk %}" class="text-red-500 hover:underline text-xs"
+               onclick="return confirm('Delete this workout?')">Delete</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-8 text-gray-500">
+        <p>No workouts yet.</p>
+        <a href="{% url 'tracker:workout_add' %}" class="text-blue-600 hover:underline">Start one</a>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

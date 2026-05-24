@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}{{ template.name }}{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">{{ template.name }}</h1>
+    <a href="{% url 'tracker:template_start_workout' template.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Start Workout</a>
+</div>
+
+{% if template.description %}
+<p class="text-gray-500 mb-4">{{ template.description }}</p>
+{% endif %}
+
+<div class="bg-white rounded-xl shadow">
+    <ul class="divide-y">
+        {% for te in template.exercises.all %}
+        <li class="px-4 py-3 flex justify-between items-center">
+            <span>
+                <span class="text-gray-400 mr-2">#{{ te.order }}</span>
+                <span class="font-medium">{{ te.exercise.name }}</span>
+            </span>
+            <span class="text-sm text-gray-500">
+                {% if te.target_sets %}{{ te.target_sets }} sets{% endif %}
+                {% if te.target_reps %} x {{ te.target_reps }}{% endif %}
+                {% if te.target_weight_kg %} @ {{ te.target_weight_kg|convert_wt:user }}{% endif %}
+            </span>
+        </li>
+        {% empty %}
+        <li class="px-4 py-8 text-center text-gray-500">No exercises in this template.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Workout - {{ workout.date }}{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <div>
+        <h1 class="text-2xl font-bold">Workout: {{ workout.date }}</h1>
+        {% if workout.template %}
+        <p class="text-gray-500">{{ workout.template.name }}</p>
+        {% endif %}
+        {% if workout.duration_minutes %}
+        <p class="text-sm text-gray-400">{{ workout.duration_minutes }} minutes</p>
+        {% endif %}
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'tracker:workout_finish' workout.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Finish</a>
+    </div>
+</div>
+
+{% if workout.notes %}
+<p class="text-gray-600 mb-4 italic">{{ workout.notes }}</p>
+{% endif %}
+
+<div class="space-y-4">
+    {% for we in workout_exercises %}
+    <div class="bg-white rounded-xl shadow">
+        <div class="px-4 py-3 bg-gray-50 rounded-t-xl flex justify-between items-center">
+            <span class="font-bold">{{ we.exercise.name }}</span>
+            <a href="{% url 'tracker:workout_exercise_remove' we.pk %}" class="text-red-500 hover:underline text-xs"
+               onclick="return confirm('Remove this exercise?')">Remove</a>
+        </div>
+
+        {% if we.sets.all %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-gray-500 text-xs">
+                    <th class="px-4 py-1 text-left">Set</th>
+                    <th class="px-4 py-1 text-left">Reps</th>
+                    <th class="px-4 py-1 text-left">kg</th>
+                    <th class="px-4 py-1 text-left">lbs</th>
+                    <th class="px-4 py-1 text-left">RIR</th>
+                    <th class="px-4 py-1"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for s in we.sets.all %}
+                <tr class="{% if s.is_warmup %}text-gray-400 italic{% endif %}">
+                    <td class="px-4 py-1">
+                        {% if s.is_warmup %}Warmup{% else %}{{ s.set_number }}{% endif %}
+                    </td>
+                    <td class="px-4 py-1">{{ s.reps|default:"-" }}</td>
+                    <td class="px-4 py-1">{{ s.weight_kg|floatformat:1|default:"-" }}</td>
+                    <td class="px-4 py-1">{{ s.weight_kg|to_lbs|default:"-" }}</td>
+                    <td class="px-4 py-1">{{ s.rir|default:"-" }}</td>
+                    <td class="px-4 py-1 text-right">
+                        <a href="{% url 'tracker:set_delete' s.pk %}" class="text-red-400 hover:text-red-600 text-xs"
+                           onclick="return confirm('Delete set?')">✕</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <div class="px-4 py-3 border-t">
+            <details>
+                <summary class="text-blue-600 text-sm cursor-pointer hover:underline">+ Add Set</summary>
+                <form method="post" action="{% url 'tracker:set_add' we.pk %}" class="mt-2 grid grid-cols-5 gap-2">
+                    {% csrf_token %}
+                    <label class="block text-sm">
+                        Reps
+                        <input type="number" name="reps" class="w-full rounded border px-2 py-1 text-sm">
+                    </label>
+                    <div class="col-span-2">
+                        <label class="block text-sm">
+                            <span class="text-gray-500">kg</span>
+                            <input type="number" id="set_kg_{{ we.pk }}" step="any"
+                                   class="w-full rounded border px-2 py-1 text-sm"
+                                   data-target="set_lbs_{{ we.pk }}" data-unit="kg">
+                        </label>
+                        <label class="block text-sm mt-1">
+                            <span class="text-gray-500">lbs</span>
+                            <input type="number" id="set_lbs_{{ we.pk }}" step="0.5"
+                                   class="w-full rounded border px-2 py-1 text-sm"
+                                   data-target="set_kg_{{ we.pk }}" data-unit="lbs">
+                        </label>
+                        <input type="hidden" name="weight" id="set_weight_{{ we.pk }}">
+                    </div>
+                    <label class="block text-sm">
+                        RIR
+                        <input type="number" name="rir" class="w-full rounded border px-2 py-1 text-sm">
+                    </label>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-sm flex items-center gap-1 pt-5">
+                            <input type="checkbox" name="is_warmup">
+                            Warmup
+                        </label>
+                        <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Add</button>
+                    </div>
+                </form>
+            </details>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-8 text-gray-500 bg-white rounded-xl shadow">
+        <p>No exercises yet.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="mt-4 bg-white rounded-xl shadow p-4">
+    <details>
+        <summary class="text-blue-600 cursor-pointer hover:underline font-medium">+ Add Exercise</summary>
+        {% if all_exercises %}
+        <form method="post" action="{% url 'tracker:workout_exercise_add' workout.pk %}" class="mt-2 flex gap-2">
+            {% csrf_token %}
+            <select name="exercise" required class="rounded border px-3 py-2 flex-1">
+                <option value="">-- Select exercise --</option>
+                {% for ex in all_exercises %}
+                <option value="{{ ex.pk }}">{{ ex.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add</button>
+        </form>
+        {% else %}
+        <p class="mt-2 text-gray-500 text-sm">
+            No exercises in your library yet.
+            <a href="{% url 'tracker:exercise_add' %}" class="text-blue-600 hover:underline">Add one here</a>
+            first, then come back.
+        </p>
+        {% endif %}
+    </details>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-unit]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var target = document.getElementById(this.dataset.target);
+                var hidden = this.closest('form').querySelector('[name="weight"]');
+                var val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    if (this.dataset.unit === 'kg') {
+                        target.value = (val * 2.20462).toFixed(1);
+                    } else {
+                        target.value = (val / 2.20462).toFixed(2);
+                    }
+                    hidden.value = this.closest('form').querySelector('[data-unit="kg"]').value;
+                } else {
+                    target.value = '';
+                    hidden.value = '';
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}

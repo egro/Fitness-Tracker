@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Measurement History{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Measurement History</h1>
+    <a href="{% url 'tracker:measurement_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Add</a>
+</div>
+
+{% if logs %}
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-gray-100">
+            <tr>
+                <th class="text-left px-3 py-2">Date</th>
+                <th class="text-left px-3 py-2">Waist</th>
+                <th class="text-left px-3 py-2">Chest</th>
+                <th class="text-left px-3 py-2">L Arm</th>
+                <th class="text-left px-3 py-2">R Arm</th>
+                <th class="text-left px-3 py-2">L Thigh</th>
+                <th class="text-left px-3 py-2">R Thigh</th>
+                <th class="text-left px-3 py-2">L Calf</th>
+                <th class="text-left px-3 py-2">R Calf</th>
+                <th class="text-left px-3 py-2">Hips</th>
+                <th class="text-left px-3 py-2">Shoulders</th>
+                <th class="text-left px-3 py-2">Neck</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for m in logs %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-3 py-2 font-medium">{{ m.date }}</td>
+                <td class="px-3 py-2">{{ m.waist_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.chest_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.left_arm_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.right_arm_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.left_thigh_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.right_thigh_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.left_calf_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.right_calf_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.hips_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.shoulders_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2">{{ m.neck_cm|convert_len:user|default:"-" }}</td>
+                <td class="px-3 py-2 text-right">
+                    <a href="{% url 'tracker:measurement_delete' m.pk %}" class="text-red-500 hover:underline text-xs"
+                       onclick="return confirm('Delete?')">Del</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-gray-500">No measurements yet.</p>
+{% endif %}
+
+{% endblock %}

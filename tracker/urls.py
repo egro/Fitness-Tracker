@@ -1,0 +1,59 @@
+from django.urls import path
+from . import views
+
+app_name = "tracker"
+
+urlpatterns = [
+    path("", views.dashboard, name="dashboard"),
+    # Weight
+    path("weight/add/", views.weight_add, name="weight_add"),
+    path("weight/", views.weight_list, name="weight_list"),
+    path("weight/<int:pk>/delete/", views.weight_delete, name="weight_delete"),
+    # Measurements
+    path("measurements/add/", views.measurement_add, name="measurement_add"),
+    path("measurements/", views.measurement_list, name="measurement_list"),
+    path(
+        "measurements/<int:pk>/delete/",
+        views.measurement_delete,
+        name="measurement_delete",
+    ),
+    # Exercises
+    path("exercises/", views.exercise_list, name="exercise_list"),
+    path("exercises/add/", views.exercise_add, name="exercise_add"),
+    path("exercises/<int:pk>/delete/", views.exercise_delete, name="exercise_delete"),
+    # Templates
+    path("templates/", views.template_list, name="template_list"),
+    path("templates/add/", views.template_add, name="template_add"),
+    path("templates/<int:pk>/", views.template_detail, name="template_detail"),
+    path("templates/<int:pk>/delete/", views.template_delete, name="template_delete"),
+    path(
+        "templates/<int:pk>/start/",
+        views.template_start_workout,
+        name="template_start_workout",
+    ),
+    # Workouts
+    path("workouts/", views.workout_list, name="workout_list"),
+    path("workouts/add/", views.workout_add, name="workout_add"),
+    path("workouts/<int:pk>/", views.workout_detail, name="workout_detail"),
+    path(
+        "workouts/<int:pk>/add-exercise/",
+        views.workout_exercise_add,
+        name="workout_exercise_add",
+    ),
+    path(
+        "workout-exercise/<int:pk>/remove/",
+        views.workout_exercise_remove,
+        name="workout_exercise_remove",
+    ),
+    path("workouts/<int:pk>/finish/", views.workout_finish, name="workout_finish"),
+    path("workouts/<int:pk>/delete/", views.workout_delete, name="workout_delete"),
+    # Sets (HTMX)
+    path(
+        "workout-exercise/<int:we_pk>/add-set/",
+        views.set_add,
+        name="set_add",
+    ),
+    path("set/<int:pk>/delete/", views.set_delete, name="set_delete"),
+    # Export
+    path("export/", views.export_data, name="export"),
+]

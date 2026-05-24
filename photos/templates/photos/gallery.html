@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Progress Photos{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Progress Photos</h1>
+    <a href="{% url 'photos:upload' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Upload</a>
+</div>
+
+{% if photos %}
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+    {% for photo in photos %}
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <a href="{{ photo.image.url }}" target="_blank">
+            <img src="{{ photo.image.url }}" alt="{{ photo.get_body_part_display }}"
+                 class="w-full h-48 object-cover">
+        </a>
+        <div class="p-3">
+            <p class="text-sm font-medium">{{ photo.date }}</p>
+            <p class="text-xs text-gray-500">{{ photo.get_body_part_display }}</p>
+            {% if photo.notes %}
+            <p class="text-xs text-gray-400 mt-1">{{ photo.notes }}</p>
+            {% endif %}
+            <a href="{% url 'photos:photo_delete' photo.pk %}" class="text-red-500 hover:underline text-xs mt-1 inline-block"
+               onclick="return confirm('Delete this photo?')">Delete</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12 text-gray-500 bg-white rounded-xl shadow">
+    <p>No photos yet.</p>
+    <a href="{% url 'photos:upload' %}" class="text-blue-600 hover:underline">Upload your first progress photo</a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,151 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+
+class ExerciseCategory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Exercise categories"
+        unique_together = ["user", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Exercise(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=200)
+    category = models.ForeignKey(
+        ExerciseCategory, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class WeightLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="weight_logs")
+    date = models.DateField()
+    weight_kg = models.DecimalField(max_digits=5, decimal_places=2)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        unique_together = ["user", "date"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.date}: {self.weight_kg}kg"
+
+
+class MeasurementLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="measurements")
+    date = models.DateField()
+    waist_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    chest_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    left_arm_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    right_arm_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    left_thigh_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    right_thigh_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    hips_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    left_calf_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    right_calf_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    shoulders_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    neck_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.date} measurements"
+
+
+class WorkoutTemplate(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="templates")
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class WorkoutTemplateExercise(models.Model):
+    template = models.ForeignKey(
+        WorkoutTemplate, on_delete=models.CASCADE, related_name="exercises"
+    )
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+    target_sets = models.PositiveIntegerField(null=True, blank=True)
+    target_reps = models.CharField(max_length=50, blank=True)
+    target_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.template.name} - {self.exercise.name}"
+
+
+class Workout(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="workouts")
+    date = models.DateField()
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    template = models.ForeignKey(
+        WorkoutTemplate, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.date} workout"
+
+
+class WorkoutExercise(models.Model):
+    workout = models.ForeignKey(
+        Workout, on_delete=models.CASCADE, related_name="exercises"
+    )
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.exercise.name} in {self.workout}"
+
+
+class Set(models.Model):
+    workout_exercise = models.ForeignKey(
+        WorkoutExercise, on_delete=models.CASCADE, related_name="sets"
+    )
+    set_number = models.PositiveIntegerField()
+    reps = models.PositiveIntegerField(null=True, blank=True)
+    weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    rir = models.PositiveIntegerField(null=True, blank=True, verbose_name="Reps in Reserve")
+    is_warmup = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["set_number"]
+
+    def __str__(self):
+        return f"Set {self.set_number}: {self.reps} reps @ {self.weight_kg}kg"

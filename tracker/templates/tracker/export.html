@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Export Data{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Export Data</h1>
+
+<p class="text-gray-600 mb-4">Download your data as CSV files.</p>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <form method="post" class="bg-white rounded-xl shadow p-4">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="weight">
+        <h2 class="font-bold mb-2">Weight Log</h2>
+        <p class="text-sm text-gray-500 mb-3">Date, weight, notes</p>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Download CSV</button>
+    </form>
+
+    <form method="post" class="bg-white rounded-xl shadow p-4">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="measurements">
+        <h2 class="font-bold mb-2">Measurements</h2>
+        <p class="text-sm text-gray-500 mb-3">All body measurements with dates</p>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Download CSV</button>
+    </form>
+
+    <form method="post" class="bg-white rounded-xl shadow p-4">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="workouts">
+        <h2 class="font-bold mb-2">Workouts</h2>
+        <p class="text-sm text-gray-500 mb-3">All workout sets with reps and weights</p>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Download CSV</button>
+    </form>
+</div>
+
+{% endblock %}

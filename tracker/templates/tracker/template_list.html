@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Workout Templates{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Workout Templates</h1>
+    <a href="{% url 'tracker:template_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Create</a>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for tpl in templates %}
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-lg font-bold">{{ tpl.name }}</h2>
+        {% if tpl.description %}
+        <p class="text-gray-500 text-sm mt-1">{{ tpl.description }}</p>
+        {% endif %}
+        <p class="text-sm text-gray-400 mt-1">{{ tpl.exercises.count }} exercise{{ tpl.exercises.count|pluralize }}</p>
+        <div class="mt-3 flex gap-2">
+            <a href="{% url 'tracker:template_detail' tpl.pk %}" class="text-blue-600 hover:underline text-sm">View</a>
+            <a href="{% url 'tracker:template_start_workout' tpl.pk %}" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Start Workout</a>
+            <a href="{% url 'tracker:template_delete' tpl.pk %}" class="text-red-500 hover:underline text-sm ml-auto"
+               onclick="return confirm('Delete template?')">Delete</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-8 text-gray-500">
+        <p>No templates yet.</p>
+        <a href="{% url 'tracker:template_add' %}" class="text-blue-600 hover:underline">Create one</a>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

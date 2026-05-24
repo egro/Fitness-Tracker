@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Dashboard - Fitness Tracker{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    {% if last_weight %}
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500 uppercase tracking-wide">Latest Weight</h2>
+        <p class="text-lg font-bold">
+            {{ last_weight.weight_kg|convert_wt:user }} {% weight_unit_tag user %}
+        </p>
+        {% if weight_change is not None %}
+        <p class="text-sm mt-1 {% if weight_change > 0 %}text-red-500{% elif weight_change < 0 %}text-green-500{% endif %}">
+            {{ weight_change|floatformat:1 }} {% weight_unit_tag user %} (7 days)
+        </p>
+        {% endif %}
+        <p class="text-xs text-gray-400 mt-1">{{ last_weight.date }}</p>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500 uppercase tracking-wide">This Week</h2>
+        <p class="text-lg font-bold">{{ recent_workouts|length }} workout{{ recent_workouts|pluralize }}</p>
+        <p class="text-sm text-gray-500">{{ recent_weight|length }} weight entries</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500 uppercase tracking-wide">Quick Actions</h2>
+        <div class="mt-2 space-y-1">
+            <a href="{% url 'tracker:weight_add' %}" class="block text-blue-600 hover:underline">+ Log Weight</a>
+            <a href="{% url 'tracker:measurement_add' %}" class="block text-blue-600 hover:underline">+ Log Measurements</a>
+            <a href="{% url 'tracker:workout_add' %}" class="block text-blue-600 hover:underline">+ Start Workout</a>
+        </div>
+    </div>
+</div>
+
+{% if has_weight_data %}
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+    <h2 class="text-lg font-bold mb-2">Weight Trend (180 days)</h2>
+    <canvas id="weightChart" height="200"></canvas>
+</div>
+<script>
+    new Chart(document.getElementById('weightChart'), {
+        type: 'line',
+        data: {
+            labels: {{ weight_labels|safe }},
+            datasets: [{
+                label: 'Weight ({% weight_unit_tag user %})',
+                data: {{ weight_values|safe }},
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+</script>
+{% endif %}
+
+{% if has_meas_data %}
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+    <h2 class="text-lg font-bold mb-2">Measurements (180 days)</h2>
+    <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
+    <canvas id="measChart" height="250"></canvas>
+</div>
+<script>
+    new Chart(document.getElementById('measChart'), {
+        type: 'line',
+        data: {
+            labels: {{ meas_labels|safe }},
+            datasets: {{ meas_datasets|safe }}
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+</script>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-lg font-bold">Recent Workouts</h2>
+            <a href="{% url 'tracker:workout_list' %}" class="text-sm text-blue-600 hover:underline">View all</a>
+        </div>
+        {% if recent_workouts %}
+        <ul class="divide-y">
+            {% for w in recent_workouts %}
+            <li class="py-2">
+                <a href="{% url 'tracker:workout_detail' w.pk %}" class="hover:text-blue-600">
+                    <span class="font-medium">{{ w.date }}</span>
+                    {% if w.template %} - {{ w.template.name }}{% endif %}
+                    {% if w.duration_minutes %}
+                    <span class="text-gray-500 text-sm">({{ w.duration_minutes }} min)</span>
+                    {% endif %}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 text-sm">No workouts yet.</p>
+        {% endif %}
+    </div>
+
+
+</div>
+
+{% endblock %}
