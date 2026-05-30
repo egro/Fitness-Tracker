@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load tracker_tags %}
 {% block title %}Log Measurements{% endblock %}
 {% block content %}
 
 <h1 class="text-2xl font-bold mb-4">Body Measurements</h1>
-<p class="text-gray-500 text-sm mb-4">Units: inches</p>
+<p class="text-gray-500 text-sm mb-4">Units: {% length_unit_tag user %}</p>
 
 <form method="post" class="bg-white rounded-xl shadow p-4 max-w-lg">
     {% csrf_token %}

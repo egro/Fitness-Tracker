@@ -1,16 +1,18 @@
 # Fitness Tracker
 
-Self-hosted fitness tracking app for you and a partner. Track weight, body measurements, exercises, workouts, sets, and progress photos — all with per-user accounts.
+Self-hosted fitness tracking app for you and a partner. Track weight, body measurements, body fat, exercises, workouts, sets, and progress photos — all with per-user accounts.
 
 ## Features
 
 - **Multi-user** with data isolation (each user sees only their own data; admin sees all)
-- **Dashboard** — latest weight, BMI, body fat % (US Navy formula), goal progress, 180-day weight trend chart, 180-day measurements chart, multi-exercise weight progression chart, 180-day cardio activity chart
-- **Themes** — light and dark mode, toggled in settings; dark mode uses CSS overrides for all common Tailwind utilities
+- **Dashboard** — latest weight, BMI, body fat % (US Navy formula + direct entry), goal progress, combined weight & body fat trend chart, measurements chart, multi-exercise weight progression chart, cardio activity chart; all charts are clickable to expand fullscreen
+- **Themes** — light, dark, and auto mode, toggled in settings; dark mode uses CSS overrides for all common Tailwind utilities
 - **Nav bar customization** — 8 preset accent colors (blue, slate, emerald, violet, amber, rose, cyan, stone) pickable in settings
+- **Unit system** — switch between imperial (lbs/in/mi) and metric (kg/cm/km) in settings; all inputs and displays adapt
 - **Weight tracking** — log with auto-converting kg/lbs fields, history table, trend chart
-- **Cardio logging** — log cardio activities with duration, distance (miles), and notes
-- **Body measurements** — 11 measurement points (waist, chest, arms, thighs, calves, hips, shoulders, neck)
+- **Body fat tracking** — log direct entries from any method (DEXA, caliper, BOD POD, scale/BIA, 3D photo, manual) with method badges; overrides Navy-calculated values on the chart
+- **Cardio logging** — log cardio activities with duration, distance, and notes
+- **Body measurements** — 11 measurement points (waist, chest, arms, thighs, calves, hips, shoulders, neck) used for Navy body fat formula
 - **Exercise library** — flat list sorted by name, shows muscle group tags; separate **Muscle Library** grouped by muscle group
 - **Categories** — add, rename, and delete muscle groups/categories
 - **Workout templates** — reusable routines with target sets, min/max reps, and target weight per exercise; create, view, edit, and delete
@@ -18,9 +20,10 @@ Self-hosted fitness tracking app for you and a partner. Track weight, body measu
 - **Progressive overload** — tracks whether all sets hit max reps; auto-suggests next weight (+5 lbs if goal met, same weight if not) pre-filled into the Add Set form
 - **Customizable navigation** — reorder and toggle which items appear as header quick links; full item list always available in hamburger menu
 - **Progress photos** — upload multiple at once, gallery view
-- **CSV export** — download weight, measurements, workout, or cardio data
+- **CSV export & import** — download or upload weight, measurements, workout, cardio, and body fat data
+- **Goal tracking** — weight goal and body fat percentage goal with progress indicators on the dashboard
 - **Django admin** — full admin panel for staff users at `/admin/`
-- **Mobile-friendly** — responsive layout with Tailwind CSS
+- **Mobile-friendly** — responsive 2-column chart grid on desktop, single-column on mobile; charts expandable for detailed view
 
 ## Tech Stack
 
@@ -108,17 +111,20 @@ fitness-tracker/
 | `/workouts/add/` | Start workout |
 | `/cardio/` | Cardio log |
 | `/cardio/add/` | Log cardio |
+| `/bodyfat/` | Body fat log |
+| `/bodyfat/add/` | Log body fat |
 | `/photos/` | Photo gallery |
 | `/photos/upload/` | Upload photos |
-| `/export/` | CSV data export |
+| `/export/` | CSV export & import |
 | `/admin/` | Django admin (staff only) |
 
 ## Data Models
 
-- **Profile** — extends User with date of birth, height (cm), goal weight (kg), sex (male/female), theme (light/dark/auto), and nav_color (8 presets)
+- **Profile** — extends User with date of birth, height (cm), goal weight (kg), goal body fat %, sex (male/female), theme (light/dark/auto), nav_color (8 presets), and units (metric/imperial)
 - **NavItem** — per-user navigation items with label, URL, order, visibility, and system flag
 - **WeightLog** — date, weight in kg, notes (one entry per user per date)
 - **MeasurementLog** — date, 11 body part measurements in cm, notes
+- **BodyFatLog** — date, body fat %, method (dexa/caliper/bodpod/scale_bia/photo_3d/manual), notes; multiple entries per day allowed
 - **ExerciseCategory** — user or global, groups exercises (muscle groups)
 - **Exercise** — name, categories (M2M — multiple muscle groups), user or global
 - **WorkoutTemplate** — reusable routine with ordered exercises
@@ -157,8 +163,12 @@ Environment variables (for production Docker deployment):
 | `DJANGO_DEBUG` | `true` | Debug mode (`true`/`false`) |
 | `DJANGO_ALLOWED_HOSTS` | `*` | Comma-separated hosts |
 
+## TODO
+
+See [`TODO.md`](TODO.md) for planned features and upcoming work.
+
 ## Data Ownership
 
 - All data is stored locally in `data/db.sqlite3` (SQLite)
 - Photos are stored in `media/` on the filesystem
-- Export any dataset as CSV from `/export/`
+- Export or import data as CSV from `/export/`

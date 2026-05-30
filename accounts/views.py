@@ -30,13 +30,13 @@ def register(request):
 @login_required
 def profile(request):
     if request.method == "POST":
-        form = ProfileForm(request.POST, instance=request.user.profile)
+        form = ProfileForm(request.POST, instance=request.user.profile, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Settings saved!")
             return redirect("tracker:dashboard")
     else:
-        form = ProfileForm(instance=request.user.profile)
+        form = ProfileForm(instance=request.user.profile, user=request.user)
     return render(request, "accounts/profile.html", {
         "form": form,
         "nav_color_presets": Profile.NAV_COLOR_PRESETS,

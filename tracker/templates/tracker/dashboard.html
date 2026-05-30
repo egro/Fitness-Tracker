@@ -23,17 +23,48 @@
         {% if body_fat_pct %}
         <p class="text-sm mt-1 text-gray-500">
             Body Fat: {{ body_fat_pct }}%
+            {% if body_fat_method and body_fat_method != "navy" %}
+            <span class="inline-block text-xs font-medium px-1.5 py-0.5 rounded
+                {% if body_fat_method == 'dexa' %}bg-purple-100 text-purple-700
+                {% elif body_fat_method == 'caliper' %}bg-yellow-100 text-yellow-700
+                {% elif body_fat_method == 'bodpod' %}bg-blue-100 text-blue-700
+                {% elif body_fat_method == 'scale_bia' %}bg-green-100 text-green-700
+                {% elif body_fat_method == 'photo_3d' %}bg-indigo-100 text-indigo-700
+                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ body_fat_method|title }}
+            </span>
+            {% endif %}
+            <span class="relative group inline-block align-middle">
+                <span class="cursor-help text-gray-400 text-xs">&#9432;</span>
+                <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-3 py-2 whitespace-nowrap z-10 shadow-lg leading-relaxed">
+                    <b>Male:</b> 86.010 &times; log&#8321;&#8320;(waist &minus; neck) &minus; 70.041 &times; log&#8321;&#8320;(height) + 36.76<br>
+                    <b>Female:</b> 163.205 &times; log&#8321;&#8320;(waist + hips &minus; neck) &minus; 97.684 &times; log&#8321;&#8320;(height) &minus; 78.387<br>
+                    <span class="text-gray-300">US Navy formula &mdash; uses your latest waist, neck, hip, and height in cm.</span>
+                </span>
+            </span>
             {% if lean_mass_display %}
             <span class="text-gray-400">| Lean: {{ lean_mass_display }} {% weight_unit_tag user %} | Fat: {{ fat_mass_display }} {% weight_unit_tag user %}</span>
             {% endif %}
         </p>
+        {% if body_fat_navy_pct and body_fat_navy_pct != body_fat_pct %}
+        <p class="text-xs text-gray-400 mt-0.5">Navy calc: {{ body_fat_navy_pct }}%</p>
+        {% endif %}
         {% endif %}
         {% if goal_remaining_lbs is not None %}
         <p class="text-sm mt-1">
             {% if goal_reached %}
-            <span class="text-green-500 font-medium">Goal reached!</span>
+            <span class="text-green-500 font-medium">Weight goal reached!</span>
             {% else %}
-            <span class="text-gray-500">{{ goal_remaining_lbs }} {% weight_unit_tag user %} to {{ goal_direction }}</span>
+            <span class="text-gray-500">{{ goal_remaining_lbs }} {% weight_unit_tag user %} to {{ goal_direction }} weight</span>
+            {% endif %}
+        </p>
+        {% endif %}
+        {% if bf_goal_remaining is not None %}
+        <p class="text-sm mt-1">
+            {% if bf_goal_reached %}
+            <span class="text-green-500 font-medium">Body fat goal reached!</span>
+            {% else %}
+            <span class="text-gray-500">{{ bf_goal_remaining }}% to {{ bf_goal_direction }} body fat</span>
             {% endif %}
         </p>
         {% endif %}
@@ -53,14 +84,19 @@
             <a href="{% url 'tracker:weight_add' %}" class="block text-blue-600 hover:underline">+ Log Weight</a>
             <a href="{% url 'tracker:measurement_add' %}" class="block text-blue-600 hover:underline">+ Log Measurements</a>
             <a href="{% url 'tracker:workout_add' %}" class="block text-blue-600 hover:underline">+ Start Workout</a>
+            <a href="{% url 'tracker:body_fat_add' %}" class="block text-blue-600 hover:underline">+ Log Body Fat</a>
             <a href="{% url 'tracker:cardio_add' %}" class="block text-blue-600 hover:underline">+ Log Cardio</a>
         </div>
     </div>
 </div>
 
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 {% if has_weight_data %}
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <h2 class="text-lg font-bold mb-2">Weight Trend (180 days)</h2>
+<div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
+    <div class="flex justify-between items-start">
+        <h2 class="text-lg font-bold mb-2">Weight &amp; Body Fat</h2>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+    </div>
     <canvas id="weightChart" height="200"></canvas>
 </div>
 <script>
@@ -75,22 +111,77 @@
                 backgroundColor: 'rgba(37, 99, 235, 0.1)',
                 tension: 0.3,
                 fill: true,
-            }]
+                spanGaps: true,
+                yAxisID: 'y',
+            }{% if has_bf_data %}, {
+                label: 'Body Fat %',
+                data: {{ bf_values|safe }},
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.3,
+                fill: true,
+                spanGaps: false,
+                pointRadius: {{ bf_radii|safe }},
+                pointStyle: {{ bf_styles|safe }},
+                yAxisID: 'y1',
+            }{% if bf_goal_val %}, {
+                label: 'BF Goal: {{ bf_goal_val }}%',
+                data: Array({{ weight_labels|safe }}.length).fill({{ bf_goal_val }}),
+                borderColor: '#16a34a',
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 2,
+                fill: false,
+                yAxisID: 'y1',
+            }{% endif %}{% endif %}]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: false } }
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            if (ctx.dataset.label === 'Body Fat %') {
+                                var methods = {{ bf_method_labels|safe }};
+                                var method = methods[ctx.dataIndex] || '';
+                                var val = ctx.parsed.y;
+                                if (method && method !== 'navy') {
+                                    return 'Body Fat: ' + val + '% (' + method.replace('_', ' ').replace(/\b\w/g, function(l){return l.toUpperCase();}) + ')';
+                                }
+                                return 'Body Fat: ' + val + '% (Navy calc)';
+                            }
+                            return ctx.dataset.label + ': ' + ctx.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: { display: true, text: 'Weight ({% weight_unit_tag user %})' }
+                },
+                y1: {
+                    beginAtZero: false,
+                    position: 'right',
+                    title: { display: true, text: 'Body Fat %' },
+                    grid: { drawOnChartArea: false },
+                }
+            }
         }
     });
 </script>
 {% endif %}
 
 {% if has_meas_data %}
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <h2 class="text-lg font-bold mb-2">Measurements (180 days)</h2>
+<div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
+    <div class="flex justify-between items-start">
+        <h2 class="text-lg font-bold mb-2">Measurements</h2>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+    </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
-    <canvas id="measChart" height="250"></canvas>
+    <canvas id="measChart" height="200"></canvas>
 </div>
 <script>
     new Chart(document.getElementById('measChart'), {
@@ -101,6 +192,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom' }
             },
@@ -111,10 +203,13 @@
 {% endif %}
 
 {% if has_exercise_progress %}
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <h2 class="text-lg font-bold mb-2">Exercise Progression</h2>
+<div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
+    <div class="flex justify-between items-start">
+        <h2 class="text-lg font-bold mb-2">Exercise Progression</h2>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+    </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
-    <canvas id="exerciseChart" height="250"></canvas>
+    <canvas id="exerciseChart" height="200"></canvas>
 </div>
 <script>
     var exerciseLabels = {{ exercise_labels|safe }};
@@ -129,6 +224,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom' },
                 tooltip: {
@@ -150,10 +246,13 @@
 {% endif %}
 
 {% if has_cardio_data %}
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <h2 class="text-lg font-bold mb-2">Cardio Activity (180 days)</h2>
+<div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
+    <div class="flex justify-between items-start">
+        <h2 class="text-lg font-bold mb-2">Cardio Activity</h2>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+    </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
-    <canvas id="cardioChart" height="250"></canvas>
+    <canvas id="cardioChart" height="200"></canvas>
 </div>
 <script>
     new Chart(document.getElementById('cardioChart'), {
@@ -164,6 +263,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom' },
                 tooltip: {
@@ -179,6 +279,7 @@
     });
 </script>
 {% endif %}
+</div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="bg-white rounded-xl shadow p-4">

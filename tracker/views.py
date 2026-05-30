@@ -2,6 +2,7 @@ import base64
 import csv
 import json
 import math
+import zipfile
 from collections import defaultdict
 from datetime import date, timedelta
 from io import BytesIO
@@ -39,10 +40,11 @@ def _safe_str(val, max_len=None):
         return s[:max_len]
     return s
 from .models import (
-    ExerciseCategory, Exercise, WeightLog, MeasurementLog,
+    ExerciseCategory, Exercise, WeightLog, MeasurementLog, BodyFatLog,
     WorkoutTemplate, WorkoutTemplateExercise, Workout, WorkoutExercise, Set,
     CardioLog,
 )
+from photos.models import ProgressPhoto
 from .utils import convert_weight, convert_length, weight_unit, length_unit, convert_distance, distance_unit
 
 
@@ -205,17 +207,24 @@ def dashboard(request):
             goal_reached = abs(remaining) < 0.1
 
     body_fat_pct = None
+    body_fat_method = None
+    body_fat_navy_pct = None
     fat_mass_display = None
     lean_mass_display = None
+    bf_goal_remaining = None
+    bf_goal_direction = None
+    bf_goal_reached = False
     if profile and last_weight:
+        # Latest Navy-calculated body fat
         latest_meas = MeasurementLog.objects.filter(
             user=request.user, waist_cm__isnull=False, neck_cm__isnull=False
         ).order_by("-date").first()
-        if latest_meas:
+        navy_pct = None
+        if latest_meas and profile.height_cm:
             waist = float(latest_meas.waist_cm)
             neck = float(latest_meas.neck_cm)
-            height_cm = float(profile.height_cm) if profile.height_cm else None
-            if height_cm and waist > neck:
+            height_cm = float(profile.height_cm)
+            if waist > neck:
                 if profile.sex == "female":
                     hips = float(latest_meas.hips_cm) if latest_meas.hips_cm else None
                     if hips:
@@ -225,12 +234,46 @@ def dashboard(request):
                 else:
                     bf = 86.010 * math.log10(waist - neck) - 70.041 * math.log10(height_cm) + 36.76
                 if bf is not None and 3 < bf < 70:
-                    body_fat_pct = round(bf, 1)
-                    weight_kg = float(last_weight.weight_kg)
-                    fat_kg = weight_kg * bf / 100.0
-                    lean_kg = weight_kg - fat_kg
-                    fat_mass_display = round(fat_kg * 2.20462, 1)
-                    lean_mass_display = round(lean_kg * 2.20462, 1)
+                    navy_pct = round(bf, 1)
+
+        # Latest direct BodyFatLog entry
+        latest_direct = BodyFatLog.objects.filter(user=request.user).order_by("-date").first()
+
+        # Pick the most recent by date
+        navy_date = latest_meas.date if latest_meas else None
+        direct_date = latest_direct.date if latest_direct else None
+        latest_entry = None
+        if direct_date and (not navy_date or direct_date >= navy_date):
+            latest_entry = latest_direct
+        elif navy_pct:
+            latest_entry = None  # use navy
+
+        if latest_direct and direct_date and (not navy_date or direct_date >= navy_date):
+            body_fat_pct = latest_direct.body_fat_pct
+            body_fat_method = latest_direct.method
+        elif navy_pct:
+            body_fat_pct = navy_pct
+            body_fat_method = "navy"
+        else:
+            body_fat_pct = None
+            body_fat_method = None
+
+        body_fat_navy_pct = navy_pct
+
+        if body_fat_pct:
+            weight_kg = float(last_weight.weight_kg)
+            fat_kg = weight_kg * body_fat_pct / 100.0
+            lean_kg = weight_kg - fat_kg
+            fat_mass_display = round(fat_kg * 2.20462, 1)
+            lean_mass_display = round(lean_kg * 2.20462, 1)
+
+        if body_fat_pct and profile.goal_body_fat_pct:
+            bf_remaining = float(profile.goal_body_fat_pct) - body_fat_pct
+            bf_goal_remaining = round(abs(bf_remaining), 1)
+            bf_goal_direction = "gain" if bf_remaining > 0 else "lose"
+            bf_goal_reached = abs(bf_remaining) < 0.1
+        else:
+            bf_goal_reached = False
 
     exercise_progress = defaultdict(list)
     wes = WorkoutExercise.objects.filter(
@@ -289,6 +332,96 @@ def dashboard(request):
         exercise_labels = "[]"
         exercise_json = "[]"
 
+    bf_labels = "[]"
+    bf_values = "[]"
+    bf_styles = "[]"
+    bf_method_labels = "[]"
+    has_bf_data = False
+    bf_goal_val = profile.goal_body_fat_pct if profile and profile.goal_body_fat_pct else None
+    if profile and profile.height_cm and weight_labels:
+        cutoff = date.today() - timedelta(days=180)
+        meas_logs = list(MeasurementLog.objects.filter(
+            user=request.user, date__gte=cutoff, waist_cm__isnull=False, neck_cm__isnull=False
+        ).order_by("date"))
+        # Build a map: measurement_date -> body_fat_value (Navy calc)
+        bf_map = {}
+        height_cm = float(profile.height_cm)
+        for m in meas_logs:
+            waist = float(m.waist_cm)
+            neck = float(m.neck_cm)
+            if waist <= neck:
+                continue
+            if profile.sex == "female":
+                hips = float(m.hips_cm) if m.hips_cm else None
+                if not hips:
+                    continue
+                bf = 163.205 * math.log10(waist + hips - neck) - 97.684 * math.log10(height_cm) - 78.387
+            else:
+                bf = 86.010 * math.log10(waist - neck) - 70.041 * math.log10(height_cm) + 36.76
+            if bf is not None and 3 < bf < 70:
+                bf_map[str(m.date)] = round(bf, 1)
+
+        # Build direct BodyFatLog entries map (most recent creation wins for dup dates)
+        direct_logs = BodyFatLog.objects.filter(
+            user=request.user, date__gte=cutoff
+        ).order_by("date", "-created_at")
+        direct_bf = {}
+        for l in direct_logs:
+            direct_bf[str(l.date)] = {"value": l.body_fat_pct, "method": l.method}
+
+        # Only proceed if we have body fat data from either source
+        if bf_map or direct_bf:
+            all_sources = list(bf_map.keys()) + list(direct_bf.keys())
+            if not bf_map:
+                all_sources = list(direct_bf.keys())
+
+            # Merge weight and BF dates into one sorted label list
+            all_dates_set = sorted(set(weight_labels + all_sources))
+
+            # Rebuild weight data with gaps for non-weight dates
+            weight_by_date = {wl_date: wv for wl_date, wv in zip(weight_labels, weight_values)}
+            merged_weight = []
+            for d in all_dates_set:
+                merged_weight.append(weight_by_date.get(d))
+
+            # Build BF data aligned to merged dates
+            # Priority: direct entry > Navy calculation (carry-forward)
+            sorted_navy_dates = sorted(bf_map.keys())
+            merged_bf = []
+            merged_styles = []
+            merged_radii = []
+            merged_methods = []
+            for d in all_dates_set:
+                if d in direct_bf:
+                    merged_bf.append(direct_bf[d]["value"])
+                    merged_styles.append("triangle")
+                    merged_radii.append(6)
+                    merged_methods.append(direct_bf[d]["method"])
+                else:
+                    closest = None
+                    for nd in sorted_navy_dates:
+                        if nd <= d:
+                            closest = nd
+                    if closest:
+                        merged_bf.append(bf_map[closest])
+                        merged_styles.append("circle")
+                        merged_radii.append(2.5)
+                        merged_methods.append("navy")
+                    else:
+                        merged_bf.append(None)
+                        merged_styles.append("circle")
+                        merged_radii.append(0)
+                        merged_methods.append("navy")
+
+            has_bf_data = any(v is not None for v in merged_bf)
+            weight_labels = all_dates_set
+            weight_values = merged_weight
+            bf_labels = json.dumps(all_dates_set)
+            bf_values = json.dumps(merged_bf)
+            bf_styles = json.dumps(merged_styles)
+            bf_radii = json.dumps(merged_radii)
+            bf_method_labels = json.dumps(merged_methods)
+
     recent_cardio = CardioLog.objects.filter(user=request.user).order_by("-date")[:5]
     cardio_labels, cardio_datasets, has_cardio_data = _cardio_data(request.user, 180)
 
@@ -311,6 +444,15 @@ def dashboard(request):
         "meas_labels": meas_labels,
         "meas_datasets": meas_datasets,
         "has_meas_data": has_meas_data,
+        "bf_labels": bf_labels,
+        "bf_values": bf_values,
+        "bf_styles": bf_styles,
+        "bf_radii": bf_radii,
+        "bf_method_labels": bf_method_labels,
+        "has_bf_data": has_bf_data,
+        "body_fat_method": body_fat_method,
+        "body_fat_navy_pct": body_fat_navy_pct,
+        "bf_goal_val": bf_goal_val,
         "wu": weight_unit(request.user),
         "lu": length_unit(request.user),
         "exercise_labels": exercise_labels,
@@ -321,6 +463,10 @@ def dashboard(request):
         "goal_remaining_lbs": goal_remaining_lbs,
         "goal_direction": goal_direction,
         "goal_reached": goal_reached,
+        "bf_goal_remaining": bf_goal_remaining,
+        "bf_goal_direction": bf_goal_direction,
+        "bf_goal_reached": bf_goal_reached,
+        "goal_body_fat_pct": profile.goal_body_fat_pct if profile else None,
     }
     return render(request, "tracker/dashboard.html", ctx)
 
@@ -417,11 +563,50 @@ def cardio_delete(request, pk):
     return redirect("tracker:cardio_list")
 
 
+# ── Body Fat ────────────────────────────────────────────────────
+
+@login_required
+def body_fat_list(request):
+    logs = BodyFatLog.objects.filter(user=request.user).order_by("-date")
+    return render(request, "tracker/body_fat_list.html", {"logs": logs})
+
+
+@login_required
+def body_fat_add(request):
+    if request.method == "POST":
+        date_val = request.POST.get("date", date.today())
+        bf = _safe_float(request.POST.get("body_fat_pct"))
+        method = request.POST.get("method", "manual")
+        notes_val = _safe_str(request.POST.get("notes", ""))
+        if bf is not None and 1 < bf < 70:
+            BodyFatLog.objects.create(
+                user=request.user,
+                date=date_val,
+                body_fat_pct=round(bf, 1),
+                method=method,
+                notes=notes_val,
+            )
+            messages.success(request, "Body fat entry saved!")
+            return redirect("tracker:body_fat_list")
+        else:
+            messages.error(request, "Please enter a valid body fat percentage (1–70).")
+    return render(request, "tracker/body_fat_form.html")
+
+
+@login_required
+def body_fat_delete(request, pk):
+    log = get_object_or_404(BodyFatLog, pk=pk, user=request.user)
+    log.delete()
+    messages.success(request, "Body fat entry deleted.")
+    return redirect("tracker:body_fat_list")
+
+
 # ── Measurements ────────────────────────────────────────────────
 
 @login_required
 def measurement_add(request):
     if request.method == "POST":
+        is_imperial = getattr(request.user.profile, "units", "imperial") == "imperial"
         data = {k: request.POST.get(k) or None for k in [
             "waist_cm", "chest_cm", "left_arm_cm", "right_arm_cm",
             "left_thigh_cm", "right_thigh_cm", "hips_cm",
@@ -430,7 +615,10 @@ def measurement_add(request):
         for k in data:
             raw = _safe_float(data[k])
             if raw is not None:
-                data[k] = round(raw / 2.54, 1)
+                if is_imperial:
+                    data[k] = round(raw * 2.54, 1)
+                else:
+                    data[k] = round(raw, 1)
             else:
                 data[k] = None
 
@@ -992,6 +1180,10 @@ def export_data(request):
             writer.writerow(["Date", "Activity", "Duration (min)", "Distance (km)", "Notes"])
             for c in CardioLog.objects.filter(user=request.user).order_by("date"):
                 writer.writerow([c.date, c.activity, c.duration_minutes, c.distance_km, c.notes])
+        elif export_type == "bodyfat":
+            writer.writerow(["Date", "Body Fat %", "Method", "Notes"])
+            for b in BodyFatLog.objects.filter(user=request.user).order_by("date"):
+                writer.writerow([b.date, b.body_fat_pct, b.method, b.notes])
         return response
     return render(request, "tracker/import_export.html")
 
@@ -1022,7 +1214,9 @@ def export_all(request):
             "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else None,
             "height_cm": profile.height_cm,
             "goal_weight_kg": profile.goal_weight_kg,
+            "goal_body_fat_pct": profile.goal_body_fat_pct,
             "sex": profile.sex,
+            "units": profile.units,
             "theme": profile.theme,
             "nav_color": profile.nav_color,
         }
@@ -1116,6 +1310,15 @@ def export_all(request):
             }
             for c in cardio_qs
         ],
+        "body_fat_logs": [
+            {
+                "date": str(b.date),
+                "body_fat_pct": b.body_fat_pct,
+                "method": b.method,
+                "notes": b.notes,
+            }
+            for b in BodyFatLog.objects.filter(user=user).order_by("date")
+        ],
         "photos": [],
     }
 
@@ -1139,17 +1342,19 @@ def export_all(request):
                 "notes": p.notes,
             })
 
-    response = HttpResponse(
-        json.dumps(data, indent=2),
-        content_type="application/json",
-    )
-    response["Content-Disposition"] = f'attachment; filename="fitness_data_{date.today()}.json"'
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("fitness_data.json", json.dumps(data, indent=2))
+    zip_buffer.seek(0)
+
+    response = HttpResponse(zip_buffer, content_type="application/zip")
+    response["Content-Disposition"] = f'attachment; filename="fitness_data_{date.today()}.zip"'
     return response
 
 
 @login_required
 def import_data(request):
-    results = {"created": defaultdict(int), "skipped": defaultdict(int), "errors": []}
+    results = {"created": defaultdict(int), "updated": defaultdict(int), "skipped": defaultdict(int), "errors": []}
     profile = getattr(request.user, "profile", None)
 
     if request.method == "POST":
@@ -1159,9 +1364,17 @@ def import_data(request):
             return redirect("tracker:import_export")
 
         try:
-            payload = json.loads(uploaded.read().decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            messages.error(request, f"Invalid JSON file: {e}")
+            raw = uploaded.read()
+            if uploaded.name.endswith(".zip"):
+                with zipfile.ZipFile(BytesIO(raw)) as zf:
+                    names = [n for n in zf.namelist() if n.endswith(".json")]
+                    if not names:
+                        messages.error(request, "ZIP file contains no JSON files.")
+                        return redirect("tracker:import_export")
+                    raw = zf.read(names[0])
+            payload = json.loads(raw.decode("utf-8"))
+        except (zipfile.BadZipfile, json.JSONDecodeError, UnicodeDecodeError) as e:
+            messages.error(request, f"Invalid file: {e}")
             return redirect("tracker:import_export")
 
         if not isinstance(payload, dict) or payload.get("version") != EXPORT_VERSION:
@@ -1177,7 +1390,7 @@ def import_data(request):
         pd = data.get("profile")
         if pd and profile:
             changed = False
-            for field in ("date_of_birth", "height_cm", "goal_weight_kg", "sex", "theme", "nav_color"):
+            for field in ("date_of_birth", "height_cm", "goal_weight_kg", "goal_body_fat_pct", "sex", "units", "theme", "nav_color"):
                 val = pd.get(field)
                 if val is not None and getattr(profile, field) != val:
                     setattr(profile, field, val)
@@ -1187,7 +1400,7 @@ def import_data(request):
                 changed = True
             if changed:
                 profile.save()
-                results["created"]["profile"] += 1
+                results["updated"]["profile"] += 1
             else:
                 results["skipped"]["profile"] += 1
 
@@ -1365,7 +1578,25 @@ def import_data(request):
             else:
                 results["skipped"]["cardio_logs"] += 1
 
-        # 9. Photos
+        # 9. Body Fat Logs
+        for b_data in data.get("body_fat_logs", []):
+            b_date = b_data.get("date")
+            if not b_date:
+                continue
+            _, created = BodyFatLog.objects.get_or_create(
+                user=request.user, date=b_date,
+                defaults={
+                    "body_fat_pct": b_data.get("body_fat_pct", 0),
+                    "method": b_data.get("method", "manual"),
+                    "notes": b_data.get("notes", ""),
+                },
+            )
+            if created:
+                results["created"]["body_fat_logs"] += 1
+            else:
+                results["skipped"]["body_fat_logs"] += 1
+
+        # 10. Photos
         for p_data in data.get("photos", []):
             p_date = p_data.get("date")
             body_part = p_data.get("body_part", "front")
@@ -1396,6 +1627,7 @@ def import_data(request):
                 results["errors"].append(f"Photo {p_date} ({body_part}): {e}")
 
         results["created"] = dict(results["created"])
+        results["updated"] = dict(results["updated"])
         results["skipped"] = dict(results["skipped"])
         return render(request, "tracker/import_export.html", {
             "import_results": results,

@@ -53,6 +53,10 @@ urlpatterns = [
     path("workouts/<int:pk>/reorder/", views.workout_reorder, name="workout_reorder"),
     path("workouts/<int:pk>/finish/", views.workout_finish, name="workout_finish"),
     path("workouts/<int:pk>/delete/", views.workout_delete, name="workout_delete"),
+    # Body Fat
+    path("bodyfat/", views.body_fat_list, name="body_fat_list"),
+    path("bodyfat/add/", views.body_fat_add, name="body_fat_add"),
+    path("bodyfat/<int:pk>/delete/", views.body_fat_delete, name="body_fat_delete"),
     # Cardio
     path("cardio/", views.cardio_list, name="cardio_list"),
     path("cardio/add/", views.cardio_add, name="cardio_add"),

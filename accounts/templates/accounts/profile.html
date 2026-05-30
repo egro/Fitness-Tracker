@@ -17,7 +17,7 @@
     </label>
 
     <label class="block mb-4">
-        <span class="text-gray-700">Height (cm)</span>
+        <span class="text-gray-700">{{ form.height_cm.label }}</span>
         {{ form.height_cm }}
         {% if form.height_cm.errors %}
         <div class="text-red-500 text-sm mt-1">{{ form.height_cm.errors }}</div>
@@ -25,10 +25,18 @@
     </label>
 
     <label class="block mb-4">
-        <span class="text-gray-700">Goal Weight (kg)</span>
+        <span class="text-gray-700">{{ form.goal_weight_kg.label }}</span>
         {{ form.goal_weight_kg }}
         {% if form.goal_weight_kg.errors %}
         <div class="text-red-500 text-sm mt-1">{{ form.goal_weight_kg.errors }}</div>
+        {% endif %}
+    </label>
+
+    <label class="block mb-4">
+        <span class="text-gray-700">Goal Body Fat (%)</span>
+        {{ form.goal_body_fat_pct }}
+        {% if form.goal_body_fat_pct.errors %}
+        <div class="text-red-500 text-sm mt-1">{{ form.goal_body_fat_pct.errors }}</div>
         {% endif %}
     </label>
 
@@ -37,6 +45,14 @@
         {{ form.sex }}
         {% if form.sex.errors %}
         <div class="text-red-500 text-sm mt-1">{{ form.sex.errors }}</div>
+        {% endif %}
+    </label>
+
+    <label class="block mb-4">
+        <span class="text-gray-700">Units</span>
+        {{ form.units }}
+        {% if form.units.errors %}
+        <div class="text-red-500 text-sm mt-1">{{ form.units.errors }}</div>
         {% endif %}
     </label>
 

@@ -153,6 +153,34 @@ class Set(models.Model):
         return f"Set {self.set_number}: {self.reps} reps @ {self.weight_kg}kg"
 
 
+class BodyFatLog(models.Model):
+    METHOD_CHOICES = [
+        ("navy", "US Navy (calculated)"),
+        ("caliper", "Caliper"),
+        ("dexa", "DEXA Scan"),
+        ("bodpod", "Bod Pod"),
+        ("scale_bia", "Bioimpedance Scale"),
+        ("photo_3d", "3D Photo Scan"),
+        ("manual", "Manual Entry"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="body_fat_logs")
+    date = models.DateField()
+    body_fat_pct = models.FloatField("Body Fat %")
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        unique_together = ["user", "date"]
+
+    def __str__(self):
+        return f"BodyFatLog {self.date}: {self.body_fat_pct}% ({self.get_method_display()})"
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+
 class CardioLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cardio_logs")
     date = models.DateField()

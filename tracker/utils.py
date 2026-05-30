@@ -10,24 +10,37 @@ def cm_to_inches(cm):
     return round(float(cm) * 0.393701, 1)
 
 
+def _get_profile(user):
+    return getattr(user, "profile", None)
+
+
+def _is_metric(user):
+    profile = _get_profile(user)
+    return profile and profile.units == "metric"
+
+
 def convert_weight(user, weight_kg):
     if weight_kg is None:
         return None
+    if _is_metric(user):
+        return round(float(weight_kg), 1)
     return kg_to_lbs(weight_kg)
 
 
 def convert_length(user, cm):
     if cm is None:
         return None
+    if _is_metric(user):
+        return round(float(cm), 1)
     return cm_to_inches(cm)
 
 
 def weight_unit(user):
-    return "lbs"
+    return "kg" if _is_metric(user) else "lbs"
 
 
 def length_unit(user):
-    return "in"
+    return "cm" if _is_metric(user) else "in"
 
 
 def km_to_miles(km):
@@ -39,8 +52,10 @@ def km_to_miles(km):
 def convert_distance(user, distance_km):
     if distance_km is None:
         return None
+    if _is_metric(user):
+        return round(float(distance_km), 2)
     return km_to_miles(distance_km)
 
 
 def distance_unit(user):
-    return "mi"
+    return "km" if _is_metric(user) else "mi"

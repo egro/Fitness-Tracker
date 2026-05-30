@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Body Fat Log{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Body Fat Log</h1>
+    <a href="{% url 'tracker:body_fat_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Add</a>
+</div>
+
+{% if logs %}
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm whitespace-nowrap">
+        <thead style="background-color: {{ user.profile.nav_color_hex }}; filter: brightness(0.85) saturate(0.7);">
+            <tr class="text-white">
+                <th class="text-left px-3 py-2">Date</th>
+                <th class="text-left px-3 py-2">Body Fat %</th>
+                <th class="text-left px-3 py-2">Method</th>
+                <th class="text-left px-3 py-2">Notes</th>
+                <th class="px-3 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y">
+            {% for m in logs %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-3 py-2 font-medium">{{ m.date }}</td>
+                <td class="px-3 py-2">{{ m.body_fat_pct }}%</td>
+                <td class="px-3 py-2">
+                    <span class="inline-block text-xs font-medium px-2 py-0.5 rounded
+                        {% if m.method == 'dexa' %}bg-purple-100 text-purple-700
+                        {% elif m.method == 'caliper' %}bg-yellow-100 text-yellow-700
+                        {% elif m.method == 'bodpod' %}bg-blue-100 text-blue-700
+                        {% elif m.method == 'scale_bia' %}bg-green-100 text-green-700
+                        {% elif m.method == 'photo_3d' %}bg-indigo-100 text-indigo-700
+                        {% elif m.method == 'navy' %}bg-gray-100 text-gray-600
+                        {% else %}bg-gray-100 text-gray-600{% endif %}">
+                        {{ m.get_method_display }}
+                    </span>
+                </td>
+                <td class="px-3 py-2 text-gray-500 max-w-xs truncate">{{ m.notes|default:"-" }}</td>
+                <td class="px-3 py-2 text-right">
+                    <a href="{% url 'tracker:body_fat_delete' m.pk %}" class="text-red-500 hover:underline text-xs"
+                       onclick="return confirm('Delete this entry?')">Del</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-gray-500">No body fat entries yet.</p>
+{% endif %}
+
+{% endblock %}

@@ -4,6 +4,7 @@ from .models import (
     Exercise,
     WeightLog,
     MeasurementLog,
+    BodyFatLog,
     WorkoutTemplate,
     WorkoutTemplateExercise,
     Workout,
@@ -71,6 +72,12 @@ class WorkoutAdmin(admin.ModelAdmin):
 class WorkoutExerciseAdmin(admin.ModelAdmin):
     list_display = ["workout", "exercise", "order"]
     inlines = [SetInline]
+
+
+@admin.register(BodyFatLog)
+class BodyFatLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "date", "body_fat_pct", "method"]
+    list_filter = ["user", "method"]
 
 
 @admin.register(Set)

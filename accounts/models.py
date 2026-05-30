@@ -31,6 +31,11 @@ class Profile(models.Model):
         "stone": "#57534e",
     }
 
+    UNITS_CHOICES = [
+        ("metric", "Metric (kg/cm)"),
+        ("imperial", "Imperial (lbs/in)"),
+    ]
+
     SEX_CHOICES = [
         ("male", "Male"),
         ("female", "Female"),
@@ -40,9 +45,11 @@ class Profile(models.Model):
     date_of_birth = models.DateField(blank=True, null=True)
     height_cm = models.FloatField(blank=True, null=True, verbose_name="Height (cm)")
     goal_weight_kg = models.FloatField(blank=True, null=True, verbose_name="Goal Weight (kg)")
+    goal_body_fat_pct = models.FloatField(blank=True, null=True, verbose_name="Goal Body Fat (%)")
     sex = models.CharField(max_length=6, choices=SEX_CHOICES, default="male")
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, default="light")
     nav_color = models.CharField(max_length=10, choices=NAV_COLOR_CHOICES, default="blue")
+    units = models.CharField(max_length=10, choices=UNITS_CHOICES, default="imperial")
 
     @property
     def nav_color_hex(self):
@@ -56,11 +63,13 @@ DEFAULT_NAV_ITEMS = [
     ("tracker:weight_add", "Log Weight"),
     ("tracker:measurement_add", "Measurements"),
     ("tracker:cardio_list", "Cardio"),
+    ("tracker:body_fat_list", "Body Fat"),
     ("tracker:exercise_list", "Exercises"),
     ("tracker:muscle_list", "Muscles"),
     ("tracker:template_list", "Templates"),
     ("tracker:workout_add", "Workout"),
     ("photos:gallery", "Photos"),
+    ("tracker:import_export", "Import/Export"),
 ]
 
 SYSTEM_NAV_ITEMS = [

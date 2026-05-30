@@ -32,40 +32,49 @@ docker compose up -d --build
 ```
 
 ## App Structure
-- `accounts/` — Registration, login, profile (theme, height, goal weight, DOB)
-- `tracker/` — Weight, measurements, exercises, workouts, sets, cardio
+- `accounts/` — Registration, login, profile (theme, height, goal weight, DOB, units, goal body fat)
+- `tracker/` — Weight, measurements, body fat, exercises, workouts, sets, cardio
 - `photos/` — Progress photos
 
 ## Profile Model (`accounts/models.py`)
 - `date_of_birth` — DateField (optional)
 - `height_cm` — FloatField for BMI calculation (optional)
 - `goal_weight_kg` — FloatField for goal tracking on dashboard (optional)
+- `goal_body_fat_pct` — FloatField for body fat goal on dashboard (optional)
 - `sex` — CharField: "male" or "female"; used for US Navy body fat formula
+- `units` — CharField: "metric" or "imperial"; controls unit display throughout the app
 - `theme` — CharField: "light", "dark", or "auto"; controls dark mode via `.dark` class on `<html>`; "auto" follows OS `prefers-color-scheme` and switches live via `matchMedia` listener
 - `nav_color` — CharField: 8 preset colors (blue, slate, emerald, violet, amber, rose, cyan, stone); sets nav bar `background-color`
 - `nav_color_hex` — `@property` that maps `nav_color` to its hex value using `NAV_COLOR_PRESETS`
 
 ## Settings Page (`/accounts/profile/`)
-- Form fields: Date of Birth, Height, Goal Weight, Sex, Theme, Nav Bar Color
+- Form fields: Date of Birth, Height, Goal Weight, Goal Body Fat %, Sex, Units (Metric/Imperial), Theme, Nav Bar Color
 - Sex (Male/Female) required for US Navy body fat formula on the dashboard
 - Height is used with latest weight to calculate BMI on the dashboard
-- Goal Weight shows remaining lbs to gain/lose on the dashboard; weight change color flips based on goal direction (green when moving toward target, red when moving away)
+- Goal Weight shows remaining lbs/kg to gain/lose on the dashboard; weight change color flips based on goal direction (green when moving toward target, red when moving away)
+- Goal Body Fat % shows remaining percentage to gain/lose on the dashboard
+- Units affects all display: imperial shows lbs/in/mi, metric shows kg/cm/km; form fields convert on save
 - Theme toggles dark mode (CSS overrides in `base.html` for common Tailwind classes)
 - Nav Bar Color shown as color swatch radio buttons; applies inline `style="background-color: ..."` on `<nav>`
 - Nav hover/active states use `hover:bg-white/20` and `bg-black/20` for dynamic color compatibility
 
 ## Layout (`templates/base.html`)
-- Page background includes a subtle repeating SVG dot pattern (dark dots in light mode, light dots in dark mode)
+- Page background: interactive particle network (dots connected by lines, repels from mouse)
 - Nav bar uses inline `style` with `user.profile.nav_color_hex` instead of a hardcoded Tailwind class
 - Dark mode CSS overrides cover common Tailwind utilities (bg, text, border, input, alert colors)
+- Chart expand: charts are clickable, expand to centered overlay with backdrop; CSS class `.chart-card.expanded` toggles fixed positioning; `Esc` or backdrop click closes; `toggleChart()` JS function handles class toggling and `ch.resize()`
 
 ## Dashboard Charts
 
-All charts use Chart.js 4.4+ and render as line graphs.
+All charts use Chart.js 4.4+ and render as line graphs. Charts are in a 2-column grid (`md:grid-cols-2`) on desktop, single-column on mobile. All charts have `maintainAspectRatio: false` so they fill their container. Chart cards have `height: 300px` (280px on mobile). Click any chart to expand it to a centered overlay at 65vh tall.
 
-### Weight Trend (180 days)
-- Single blue line (`#2563eb`) with filled area
-- Source: `WeightLog` entries
+### Combined Weight & Body Fat (180 days)
+- Weight: blue line (`#2563eb`) with filled area, left y-axis (`spanGaps: true`)
+- Body Fat: red line (`#ef4444`), right y-axis (`spanGaps: false`)
+- Direct `BodyFatLog` entries appear as triangles with larger radius; Navy-calculated points are small circles
+- Tooltip shows method name for direct entries or "Navy calc" for calculated
+- Date axis merges weight log dates, measurement dates, and BodyFatLog dates
+- Source: `WeightLog` entries + Navy formula from `MeasurementLog` + `BodyFatLog` entries
 
 ### Body Measurements (180 days)
 - All body parts on one chart, each with a distinct color
@@ -96,12 +105,21 @@ All charts use Chart.js 4.4+ and render as line graphs.
 - `/admin/` — Django admin (staff only)
 - `/weight/` — Weight logs
 - `/measurements/` — Body measurements
+- `/bodyfat/` — Body fat log
 - `/cardio/` — Cardio activity log
 - `/exercises/` — Exercise library
 - `/templates/` — Workout templates
 - `/workouts/` — Workout logging
 - `/photos/` — Progress photos
-- `/export/` — CSV export
+- `/export/` — CSV export & import
+
+## BodyFatLog Model (`tracker/models.py`)
+- `date` — DateField
+- `body_fat_percentage` — FloatField (the logged %)
+- `method` — CharField with choices: dexa, caliper, bodpod, scale_bia, photo_3d, manual
+- `notes` — TextField (optional)
+- `Meta.ordering = ["-date", "-created_at"]` — duplicate dates resolved by most recently created
+- `BodyFatLog.objects.filter(user=request.user)` for queries
 
 ## Cardio Log Model (`tracker/models.py`)
 - `activity` — CharField for activity name (e.g. Swimming, Treadmill, Biking)
@@ -109,3 +127,9 @@ All charts use Chart.js 4.4+ and render as line graphs.
 - `distance_km` — DecimalField (optional) for distance in km; displayed as miles in templates
 - `notes` — TextField for optional notes
 - `CardioLog.objects.filter(user=request.user).order_by("-date")` for listing
+
+## Dashboard Summary Card
+- Shows latest body fat % with method badge (colored pill: DEXA purple, caliper yellow, BOD POD blue, scale/BIA green, 3D photo indigo, manual gray)
+- Info tooltip (ℹ️) displays US Navy formula for both sexes
+- If Navy calc differs from latest entry, shows "Navy calc: X%" in lighter text below
+- Shows lean mass and fat mass in current weight unit when both weight and BF are available
