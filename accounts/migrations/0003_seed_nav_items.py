@@ -3,7 +3,7 @@ from django.db import migrations
 DEFAULT_NAV_ITEMS = [
     ("tracker:dashboard", "Dashboard"),
     ("tracker:weight_add", "Log Weight"),
-    ("tracker:measurement_add", "Measure"),
+    ("tracker:measurement_add", "Measurements"),
     ("tracker:exercise_list", "Exercises"),
     ("tracker:template_list", "Templates"),
     ("tracker:workout_add", "Workout"),

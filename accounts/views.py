@@ -3,14 +3,18 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.contrib import messages
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from .forms import RegisterForm, ProfileForm
-from .models import NavItem
+from .models import NavItem, Profile
 
 
+@method_decorator(ratelimit(key="ip", rate="10/m", method="POST"), name="dispatch")
 class CustomLoginView(LoginView):
     template_name = "accounts/login.html"
 
 
+@ratelimit(key="ip", rate="5/m", method="POST")
 def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
@@ -33,7 +37,11 @@ def profile(request):
             return redirect("tracker:dashboard")
     else:
         form = ProfileForm(instance=request.user.profile)
-    return render(request, "accounts/profile.html", {"form": form})
+    return render(request, "accounts/profile.html", {
+        "form": form,
+        "nav_color_presets": Profile.NAV_COLOR_PRESETS,
+        "nav_color_choices": Profile.NAV_COLOR_CHOICES,
+    })
 
 
 @login_required

@@ -17,23 +17,31 @@
         <textarea name="description" rows="2" class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">{{ template_description|default:'' }}</textarea>
     </label>
 
+    <label class="flex items-center gap-2 mb-4 cursor-pointer">
+        <input type="checkbox" name="is_public" {% if template_is_public %}checked{% endif %}>
+        <span class="text-gray-700 text-sm">Share with everyone</span>
+    </label>
+
     <fieldset class="mb-4">
         <legend class="font-medium mb-2">Exercises</legend>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-gray-500 text-xs border-b">
+                        <th class="w-6 px-2 py-1"></th>
                         <th class="px-2 py-1 text-left">Include</th>
                         <th class="px-2 py-1 text-left">Exercise</th>
                         <th class="px-2 py-1 text-left">Sets</th>
                         <th class="px-2 py-1 text-left">Min Reps</th>
                         <th class="px-2 py-1 text-left">Max Reps</th>
-                        <th class="px-2 py-1 text-left">Weight ({{ wu }})</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="exercise-sortable">
                     {% for item in exercise_data %}
                     <tr class="border-b hover:bg-gray-50">
+                        <td class="px-2 py-2">
+                            <span class="drag-handle cursor-grab text-gray-400 select-none">⠿</span>
+                        </td>
                         <td class="px-2 py-2">
                             <input type="checkbox" name="exercises" value="{{ item.exercise.pk }}"
                                    {% if item.checked %}checked{% endif %}>
@@ -61,11 +69,6 @@
                                    value="{{ item.target_reps_max|default:'' }}" min="0"
                                    class="w-16 rounded border px-2 py-1">
                         </td>
-                        <td class="px-2 py-2">
-                            <input type="number" name="target_weight_{{ item.exercise.pk }}"
-                                   value="{{ item.target_weight_display|default:'' }}" step="any"
-                                   class="w-20 rounded border px-2 py-1">
-                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -86,4 +89,11 @@
     <a href="{% url 'tracker:template_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
 </form>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    new Sortable(document.getElementById('exercise-sortable'), {
+        handle: '.drag-handle',
+        animation: 150
+    });
+</script>
 {% endblock %}

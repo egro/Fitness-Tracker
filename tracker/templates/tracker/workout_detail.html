@@ -13,21 +13,27 @@
         <p class="text-sm text-gray-400">{{ workout.duration_minutes }} minutes</p>
         {% endif %}
     </div>
+    {% if not workout.duration_minutes %}
     <div class="flex gap-2">
         <a href="{% url 'tracker:workout_finish' workout.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Finish</a>
     </div>
+    {% endif %}
 </div>
 
 {% if workout.notes %}
 <p class="text-gray-600 mb-4 italic">{{ workout.notes }}</p>
 {% endif %}
 
-<div class="space-y-4">
+<div id="exercise-list" class="space-y-4">
     {% for we in workout_exercises %}
-    <div class="bg-white rounded-xl shadow">
-        <div class="px-4 py-3 bg-gray-50 rounded-t-xl flex justify-between items-center">
-            <span class="font-bold">{{ we.exercise.name }}</span>
-            <a href="{% url 'tracker:workout_exercise_remove' we.pk %}" class="text-red-500 hover:underline text-xs"
+    <div class="bg-white rounded-xl shadow" data-exercise-id="{{ we.pk }}">
+        <div class="px-4 py-3 rounded-t-xl flex justify-between items-center text-white tracking-wide"
+             style="background-color: {{ user.profile.nav_color_hex }}; filter: brightness(0.85) saturate(0.7);">
+            <span class="flex items-center gap-2">
+                <span class="drag-handle cursor-grab text-white/60 select-none text-lg leading-none">⠿</span>
+                <span class="font-bold">{{ we.exercise.name }}</span>
+            </span>
+            <a href="{% url 'tracker:workout_exercise_remove' we.pk %}" class="text-white/70 hover:text-white underline text-xs"
                onclick="return confirm('Remove this exercise?')">Remove</a>
         </div>
 
@@ -141,5 +147,26 @@
 </div>
 
 
-
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    new Sortable(document.getElementById('exercise-list'), {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function () {
+            var items = document.querySelectorAll('#exercise-list > [data-exercise-id]');
+            var ids = Array.from(items).map(function (el) {
+                return el.getAttribute('data-exercise-id');
+            });
+            var form = new FormData();
+            ids.forEach(function (id) {
+                form.append('exercise_ids', id);
+            });
+            fetch('{% url "tracker:workout_reorder" workout.pk %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: form
+            });
+        }
+    });
+</script>
 {% endblock %}

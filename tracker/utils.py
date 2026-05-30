@@ -28,3 +28,19 @@ def weight_unit(user):
 
 def length_unit(user):
     return "in"
+
+
+def km_to_miles(km):
+    if km is None:
+        return None
+    return round(float(km) * 0.621371, 2)
+
+
+def convert_distance(user, distance_km):
+    if distance_km is None:
+        return None
+    return km_to_miles(distance_km)
+
+
+def distance_unit(user):
+    return "mi"

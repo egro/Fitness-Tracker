@@ -20,6 +20,7 @@ class Exercise(models.Model):
     name = models.CharField(max_length=200)
     categories = models.ManyToManyField(ExerciseCategory, blank=True, related_name="exercises")
     notes = models.TextField(blank=True)
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -41,7 +42,7 @@ class WeightLog(models.Model):
         unique_together = ["user", "date"]
 
     def __str__(self):
-        return f"{self.user.username} - {self.date}: {self.weight_kg}kg"
+        return f"WeightLog {self.date}: {self.weight_kg}kg"
 
 
 class MeasurementLog(models.Model):
@@ -65,13 +66,14 @@ class MeasurementLog(models.Model):
         ordering = ["-date", "-created_at"]
 
     def __str__(self):
-        return f"{self.user.username} - {self.date} measurements"
+        return f"MeasurementLog {self.date}"
 
 
 class WorkoutTemplate(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="templates")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -91,8 +93,6 @@ class WorkoutTemplateExercise(models.Model):
     target_reps = models.CharField(max_length=50, blank=True)
     target_reps_min = models.PositiveIntegerField(null=True, blank=True)
     target_reps_max = models.PositiveIntegerField(null=True, blank=True)
-    target_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-
     class Meta:
         ordering = ["order"]
 
@@ -116,7 +116,7 @@ class Workout(models.Model):
         ordering = ["-date", "-created_at"]
 
     def __str__(self):
-        return f"{self.user.username} - {self.date} workout"
+        return f"Workout {self.date} #{self.pk}"
 
 
 class WorkoutExercise(models.Model):
@@ -151,3 +151,19 @@ class Set(models.Model):
 
     def __str__(self):
         return f"Set {self.set_number}: {self.reps} reps @ {self.weight_kg}kg"
+
+
+class CardioLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cardio_logs")
+    date = models.DateField()
+    activity = models.CharField(max_length=100)
+    duration_minutes = models.PositiveIntegerField()
+    distance_km = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"CardioLog {self.date}: {self.activity} ({self.duration_minutes}min)"

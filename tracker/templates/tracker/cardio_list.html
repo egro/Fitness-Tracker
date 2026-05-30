@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Cardio Log{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Cardio Log</h1>
+    <a href="{% url 'tracker:cardio_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Log Cardio</a>
+</div>
+
+{% if logs %}
+<div class="overflow-x-auto">
+    <table class="w-full bg-white shadow rounded-xl overflow-hidden">
+        <thead>
+            <tr class="text-white text-sm uppercase tracking-wide"
+                style="background-color: {{ user.profile.nav_color_hex }};">
+                <th class="px-4 py-2 text-left">Date</th>
+                <th class="px-4 py-2 text-left">Activity</th>
+                <th class="px-4 py-2 text-left">Duration</th>
+                <th class="px-4 py-2 text-left">Distance</th>
+                <th class="px-4 py-2 text-left">Notes</th>
+                <th class="px-4 py-2 text-left"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for log in logs %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 whitespace-nowrap">{{ log.date }}</td>
+                <td class="px-4 py-2 font-medium">{{ log.activity }}</td>
+                <td class="px-4 py-2">{{ log.duration_minutes }} min</td>
+                <td class="px-4 py-2">
+                    {% if log.distance_km %}
+                        {{ log.distance_km|convert_dist:request.user }} {{ du }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td class="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{{ log.notes|default:"—" }}</td>
+                <td class="px-4 py-2">
+                    <form method="post" action="{% url 'tracker:cardio_delete' log.pk %}"
+                          onsubmit="return confirm('Delete this cardio entry?');"
+                          class="inline">
+                        {% csrf_token %}
+                        <button class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-gray-500 bg-white rounded-xl shadow p-6 text-center">No cardio logged yet.</p>
+{% endif %}
+
+{% endblock %}

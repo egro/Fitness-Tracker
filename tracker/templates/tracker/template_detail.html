@@ -4,9 +4,16 @@
 {% block content %}
 
 <div class="flex justify-between items-center mb-4">
-    <h1 class="text-2xl font-bold">{{ template.name }}</h1>
+    <h1 class="text-2xl font-bold">
+        {{ template.name }}
+        {% if template.is_public and not is_owner %}
+        <span class="text-sm bg-green-100 text-green-700 px-2 py-0.5 rounded align-middle">Public</span>
+        {% endif %}
+    </h1>
     <div class="flex gap-2">
+        {% if is_owner %}
         <a href="{% url 'tracker:template_edit' template.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit</a>
+        {% endif %}
         <a href="{% url 'tracker:template_start_workout' template.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Start Workout</a>
     </div>
 </div>
@@ -29,7 +36,6 @@
                     x {% if te.target_reps_min %}{{ te.target_reps_min }}{% else %}?{% endif %}
                     {% if te.target_reps_max and te.target_reps_max != te.target_reps_min %}-{{ te.target_reps_max }}{% endif %}
                 {% endif %}
-                {% if te.target_weight_kg %} @ {{ te.target_weight_kg|convert_wt:user }}{% endif %}
             </span>
         </li>
         {% empty %}

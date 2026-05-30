@@ -1,5 +1,5 @@
 from django import template
-from ..utils import convert_weight as cw, convert_length as cl, weight_unit as wu, length_unit as lu, kg_to_lbs
+from ..utils import convert_weight as cw, convert_length as cl, weight_unit as wu, length_unit as lu, kg_to_lbs, convert_distance as cd, distance_unit as du
 
 register = template.Library()
 
@@ -25,6 +25,13 @@ def convert_len(cm, user):
     return cl(user, cm)
 
 
+@register.filter
+def convert_dist(distance_km, user):
+    if distance_km is None:
+        return None
+    return cd(user, distance_km)
+
+
 @register.simple_tag
 def weight_unit_tag(user):
     return wu(user)
@@ -33,3 +40,8 @@ def weight_unit_tag(user):
 @register.simple_tag
 def length_unit_tag(user):
     return lu(user)
+
+
+@register.simple_tag
+def distance_unit_tag(user):
+    return du(user)

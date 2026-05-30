@@ -14,7 +14,11 @@ RUN chmod +x /entrypoint.sh
 COPY . .
 
 RUN mkdir -p /app/data /app/media && \
-    python manage.py collectstatic --noinput
+    python manage.py collectstatic --noinput && \
+    adduser --disabled-password --gecos "" appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8000
 

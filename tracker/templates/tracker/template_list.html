@@ -10,17 +10,27 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {% for tpl in templates %}
     <div class="bg-white rounded-xl shadow p-4">
-        <h2 class="text-lg font-bold">{{ tpl.name }}</h2>
+        <h2 class="text-lg font-bold">
+            {{ tpl.name }}
+            {% if tpl.is_public and tpl.user != user %}
+            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded align-middle">Public</span>
+            {% endif %}
+        </h2>
         {% if tpl.description %}
         <p class="text-gray-500 text-sm mt-1">{{ tpl.description }}</p>
         {% endif %}
-        <p class="text-sm text-gray-400 mt-1">{{ tpl.exercises.count }} exercise{{ tpl.exercises.count|pluralize }}</p>
+        <p class="text-sm text-gray-400 mt-1">
+            {{ tpl.exercises.count }} exercise{{ tpl.exercises.count|pluralize }}
+            {% if tpl.user != user %}by {{ tpl.user.username }}{% endif %}
+        </p>
             <div class="mt-3 flex gap-2">
                 <a href="{% url 'tracker:template_detail' tpl.pk %}" class="text-blue-600 hover:underline text-sm">View</a>
+                {% if tpl.user == user %}
                 <a href="{% url 'tracker:template_edit' tpl.pk %}" class="text-yellow-600 hover:underline text-sm">Edit</a>
-                <a href="{% url 'tracker:template_start_workout' tpl.pk %}" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Start Workout</a>
                 <a href="{% url 'tracker:template_delete' tpl.pk %}" class="text-red-500 hover:underline text-sm ml-auto"
                    onclick="return confirm('Delete template?')">Delete</a>
+                {% endif %}
+                <a href="{% url 'tracker:template_start_workout' tpl.pk %}" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700{% if tpl.user == user %} ml-auto{% endif %}">Start Workout</a>
             </div>
     </div>
     {% empty %}

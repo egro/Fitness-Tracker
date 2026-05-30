@@ -11,8 +11,8 @@
 {% if logs %}
 <div class="bg-white rounded-xl shadow overflow-x-auto">
     <table class="w-full text-sm whitespace-nowrap">
-        <thead class="bg-gray-100">
-            <tr>
+        <thead style="background-color: {{ user.profile.nav_color_hex }}; filter: brightness(0.85) saturate(0.7);">
+            <tr class="text-white">
                 <th class="text-left px-3 py-2">Date</th>
                 <th class="text-left px-3 py-2">Waist</th>
                 <th class="text-left px-3 py-2">Chest</th>

@@ -1,15 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{% if user.is_authenticated and user.profile.theme == "dark" %} class="dark"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>var _theme='{{ user.profile.theme|default:"light"|escapejs }}',_navHex='{% if user.is_authenticated %}{{ user.profile.nav_color_hex|escapejs }}{% else %}#2563eb{% endif %}';if(_theme==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.classList.add('dark')</script>
     <title>{% block title %}Fitness Tracker{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: "class" };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+        .dark .bg-white { background-color: #1f2937; }
+        .dark .bg-gray-50 { background-color: #111827; }
+        .dark .bg-gray-100 { background-color: #374151; }
+        .dark .text-gray-900 { color: #f3f4f6; }
+        .dark .text-gray-700 { color: #d1d5db; }
+        .dark .text-gray-500 { color: #9ca3af; }
+        .dark .text-gray-400 { color: #9ca3af; }
+        .dark .border-gray-300 { border-color: #4b5563; }
+        .dark .border-gray-200 { border-color: #374151; }
+        .dark .divide-gray-200 > * + * { border-color: #374151; }
+        .dark .hover\:bg-gray-50:hover { background-color: #374151; }
+        .dark .hover\:bg-gray-100:hover { background-color: #374151; }
+        .dark input, .dark select, .dark textarea {
+            background-color: #374151;
+            color: #f3f4f6;
+            border-color: #4b5563;
+        }
+        .dark option { background-color: #374151; color: #f3f4f6; }
+        .dark .bg-green-100 { background-color: #064e3b; border-color: #065f46; color: #6ee7b7; }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
-    <nav class="relative bg-blue-600 text-white shadow-lg">
+    <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none" style="z-index: -1;"></canvas>
+    <nav class="relative text-white shadow-lg"
+         style="background-color: {% if user.is_authenticated %}{{ user.profile.nav_color_hex }}{% else %}#2563eb{% endif %};">
         <div class="max-w-4xl mx-auto px-4">
             <div class="flex items-center justify-between h-14 gap-2">
                 <a href="{% url 'tracker:dashboard' %}" class="font-bold text-lg shrink-0">FT</a>
@@ -17,23 +44,29 @@
                 <div class="hidden md:flex items-center gap-1 overflow-x-auto">
                     {% for item in user.nav_items.all %}
                     {% if item.is_visible and not item.is_system %}
-                    <a href="{% url item.url_name %}" class="px-3 py-1.5 text-sm rounded hover:bg-blue-700 whitespace-nowrap">{{ item.label }}</a>
+                    <a href="{% url item.url_name %}" class="px-3 py-1.5 text-sm rounded hover:bg-white/20 whitespace-nowrap">{{ item.label }}</a>
                     {% endif %}
                     {% endfor %}
+                    {% if user.is_staff %}
+                    <a href="/admin/" class="px-3 py-1.5 text-sm rounded hover:bg-white/20 whitespace-nowrap">Admin</a>
+                    {% endif %}
                 </div>
                 <div class="relative shrink-0">
-                    <button id="mobile-menu-btn" class="p-2" onclick="document.getElementById('nav-links').classList.toggle('hidden')">
+                    <button id="mobile-menu-btn" class="p-2 hover:bg-white/20 rounded" onclick="document.getElementById('nav-links').classList.toggle('hidden')">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <div id="nav-links" class="hidden absolute right-0 top-full mt-1 bg-blue-700 shadow-lg rounded-lg z-10 min-w-48">
+                    <div id="nav-links" class="hidden absolute right-0 top-full mt-1 bg-black/70 shadow-lg rounded-lg z-10 min-w-48 backdrop-blur-sm">
                         <div class="px-4 py-2 space-y-1">
                             {% for item in user.nav_items.all %}
-                            <a href="{% url item.url_name %}" class="block px-4 py-2 rounded hover:bg-blue-700">{{ item.label }}</a>
+                            <a href="{% url item.url_name %}" class="block px-4 py-2 rounded hover:bg-white/20">{{ item.label }}</a>
                             {% endfor %}
-                            <hr class="border-blue-500 my-2">
-                            <span class="block px-4 py-1 text-blue-200 text-sm">{{ user.username }}</span>
+                            {% if user.is_staff %}
+                            <a href="/admin/" class="block px-4 py-2 rounded hover:bg-white/20">Admin</a>
+                            {% endif %}
+                            <hr class="border-white/20 my-2">
+                            <span class="block px-4 py-1 text-white/70 text-sm">{{ user.username }}</span>
                         </div>
                     </div>
                 </div>
@@ -52,5 +85,123 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    <script>
+        (function() {
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+
+            let W, H, dots = [];
+            let mouseX = -9999, mouseY = -9999;
+            const COUNT = 270;
+            const CONNECT_DIST = 120;
+            const MOUSE_RADIUS = 200;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+
+            function isDark() {
+                return document.documentElement.classList.contains('dark');
+            }
+
+            function hexToRgb(hex) {
+                const v = parseInt(hex.slice(1), 16);
+                return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+            }
+
+            const _rgb = hexToRgb(_navHex);
+            function dotColorStr() { return _rgb.join(','); }
+
+            function initDots() {
+                const dark = isDark();
+                dots = [];
+                for (let i = 0; i < COUNT; i++) {
+                    dots.push({
+                        x: 0, y: 0,
+                        baseX: Math.random() * W,
+                        baseY: Math.random() * H,
+                        phaseX: Math.random() * Math.PI * 2,
+                        phaseY: Math.random() * Math.PI * 2,
+                        speed: 0.4 + Math.random() * 0.4,
+                        driftAmp: 20 + Math.random() * 20,
+                        radius: 1.2 + Math.random() * 1.5,
+                        alphaDark: 0.2 + Math.random() * 0.15,
+                        alphaLight: 0.15 + Math.random() * 0.15,
+                    });
+                }
+            }
+
+            function dotAlpha(d) { return isDark() ? d.alphaDark : d.alphaLight; }
+
+            resize();
+            initDots();
+            window.addEventListener('resize', () => { resize(); initDots(); });
+
+            document.addEventListener('mousemove', e => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+            document.addEventListener('mouseleave', () => {
+                mouseX = -9999;
+                mouseY = -9999;
+            });
+
+            function animate() {
+                const t = Date.now() / 1000;
+                const col = dotColorStr();
+                ctx.clearRect(0, 0, W, H);
+
+                for (const d of dots) {
+                    const dx = d.baseX - mouseX;
+                    const dy = d.baseY - mouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const strength = Math.max(0, 1 - dist / MOUSE_RADIUS);
+                    const angle = Math.atan2(dy, dx);
+
+                    d.x = d.baseX
+                        + Math.sin(t * d.speed + d.phaseX) * d.driftAmp
+                        + Math.cos(angle) * strength * 80;
+                    d.y = d.baseY
+                        + Math.cos(t * d.speed + d.phaseY) * d.driftAmp
+                        + Math.sin(angle) * strength * 80;
+                }
+
+                for (let i = 0; i < dots.length; i++) {
+                    for (let j = i + 1; j < dots.length; j++) {
+                        const a = dots[i], b = dots[j];
+                        const dx = a.x - b.x;
+                        const dy = a.y - b.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < CONNECT_DIST) {
+                            const alpha = (1 - dist / CONNECT_DIST) * 0.3;
+                            ctx.beginPath();
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
+                            ctx.strokeStyle = `rgba(${col},${alpha})`;
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                for (const d of dots) {
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${col},${dotAlpha(d)})`;
+                    ctx.fill();
+                }
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            if (_theme === 'auto') {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                    document.documentElement.classList.toggle('dark', e.matches);
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

@@ -5,8 +5,48 @@ from django.dispatch import receiver
 
 
 class Profile(models.Model):
+    THEME_CHOICES = [
+        ("light", "Light"),
+        ("dark", "Dark"),
+        ("auto", "Auto (follow system)"),
+    ]
+    NAV_COLOR_CHOICES = [
+        ("blue", "Blue"),
+        ("slate", "Slate"),
+        ("emerald", "Emerald"),
+        ("violet", "Violet"),
+        ("amber", "Amber"),
+        ("rose", "Rose"),
+        ("cyan", "Cyan"),
+        ("stone", "Stone"),
+    ]
+    NAV_COLOR_PRESETS = {
+        "blue": "#2563eb",
+        "slate": "#475569",
+        "emerald": "#059669",
+        "violet": "#7c3aed",
+        "amber": "#d97706",
+        "rose": "#e11d48",
+        "cyan": "#0891b2",
+        "stone": "#57534e",
+    }
+
+    SEX_CHOICES = [
+        ("male", "Male"),
+        ("female", "Female"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     date_of_birth = models.DateField(blank=True, null=True)
+    height_cm = models.FloatField(blank=True, null=True, verbose_name="Height (cm)")
+    goal_weight_kg = models.FloatField(blank=True, null=True, verbose_name="Goal Weight (kg)")
+    sex = models.CharField(max_length=6, choices=SEX_CHOICES, default="male")
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, default="light")
+    nav_color = models.CharField(max_length=10, choices=NAV_COLOR_CHOICES, default="blue")
+
+    @property
+    def nav_color_hex(self):
+        return self.NAV_COLOR_PRESETS.get(self.nav_color, "#2563eb")
 
     def __str__(self):
         return f"{self.user.username} profile"
@@ -14,7 +54,8 @@ class Profile(models.Model):
 
 DEFAULT_NAV_ITEMS = [
     ("tracker:weight_add", "Log Weight"),
-    ("tracker:measurement_add", "Measure"),
+    ("tracker:measurement_add", "Measurements"),
+    ("tracker:cardio_list", "Cardio"),
     ("tracker:exercise_list", "Exercises"),
     ("tracker:muscle_list", "Muscles"),
     ("tracker:template_list", "Templates"),

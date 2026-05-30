@@ -6,8 +6,5 @@ services:
     volumes:
       - ./data:/app/data
       - ./media:/app/media
-    environment:
-      - DJANGO_SECRET_KEY=change-this-to-a-random-secret-key
-      - DJANGO_DEBUG=false
-      - DJANGO_ALLOWED_HOSTS=*
+    env_file: .env
     restart: unless-stopped

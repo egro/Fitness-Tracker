@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 
 def photo_path(instance, filename):
-    return f"progress_photos/{instance.user.username}/{instance.date}/{filename}"
+    return f"progress_photos/{instance.user.pk}/{instance.date}/{filename}"
 
 
 class ProgressPhoto(models.Model):
@@ -27,4 +27,4 @@ class ProgressPhoto(models.Model):
         verbose_name_plural = "Progress photos"
 
     def __str__(self):
-        return f"{self.user.username} - {self.date} ({self.body_part})"
+        return f"ProgressPhoto {self.date} ({self.body_part})"

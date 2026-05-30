@@ -1,13 +1,15 @@
 # Fitness Tracker
 
-Self-hosted fitness tracking app for you and a partner. Track weight, body measurements, exercises, workouts, sets, and progress photos — all with per-user accounts and metric/imperial support.
+Self-hosted fitness tracking app for you and a partner. Track weight, body measurements, exercises, workouts, sets, and progress photos — all with per-user accounts.
 
 ## Features
 
 - **Multi-user** with data isolation (each user sees only their own data; admin sees all)
-- **Per-user units** — metric (kg/cm) or imperial (lbs/in), toggled in settings
-- **Dashboard** — latest weight, 180-day weight trend chart, 180-day measurements chart, per-exercise weight progression chart
+- **Dashboard** — latest weight, BMI, body fat % (US Navy formula), goal progress, 180-day weight trend chart, 180-day measurements chart, multi-exercise weight progression chart, 180-day cardio activity chart
+- **Themes** — light and dark mode, toggled in settings; dark mode uses CSS overrides for all common Tailwind utilities
+- **Nav bar customization** — 8 preset accent colors (blue, slate, emerald, violet, amber, rose, cyan, stone) pickable in settings
 - **Weight tracking** — log with auto-converting kg/lbs fields, history table, trend chart
+- **Cardio logging** — log cardio activities with duration, distance (miles), and notes
 - **Body measurements** — 11 measurement points (waist, chest, arms, thighs, calves, hips, shoulders, neck)
 - **Exercise library** — flat list sorted by name, shows muscle group tags; separate **Muscle Library** grouped by muscle group
 - **Categories** — add, rename, and delete muscle groups/categories
@@ -16,7 +18,7 @@ Self-hosted fitness tracking app for you and a partner. Track weight, body measu
 - **Progressive overload** — tracks whether all sets hit max reps; auto-suggests next weight (+5 lbs if goal met, same weight if not) pre-filled into the Add Set form
 - **Customizable navigation** — reorder and toggle which items appear as header quick links; full item list always available in hamburger menu
 - **Progress photos** — upload multiple at once, gallery view
-- **CSV export** — download weight, measurements, or workout data
+- **CSV export** — download weight, measurements, workout, or cardio data
 - **Django admin** — full admin panel for staff users at `/admin/`
 - **Mobile-friendly** — responsive layout with Tailwind CSS
 
@@ -48,6 +50,7 @@ venv/bin/python manage.py runserver 0.0.0.0:8000
 
 ```bash
 docker compose up -d --build
+docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
 ```
 
@@ -83,11 +86,11 @@ fitness-tracker/
 ## URLs
 
 | URL | Page |
-|---|---|
-| `/` | Dashboard (weight chart, measurements chart, exercise progression) |
+|---|---|---|
+| `/` | Dashboard (weight chart, measurements chart, exercise progression, recent cardio) |
 | `/accounts/login/` | Login |
 | `/accounts/register/` | Register |
-| `/accounts/profile/` | Settings (unit preference, date of birth) |
+| `/accounts/profile/` | Settings (date of birth, height, goal weight, sex, theme, nav color) |
 | `/accounts/nav-items/` | Customize navigation (reorder, toggle header visibility) |
 | `/weight/` | Weight history |
 | `/weight/add/` | Log weight |
@@ -103,6 +106,8 @@ fitness-tracker/
 | `/templates/<pk>/edit/` | Edit template |
 | `/workouts/` | Workout history |
 | `/workouts/add/` | Start workout |
+| `/cardio/` | Cardio log |
+| `/cardio/add/` | Log cardio |
 | `/photos/` | Photo gallery |
 | `/photos/upload/` | Upload photos |
 | `/export/` | CSV data export |
@@ -110,7 +115,7 @@ fitness-tracker/
 
 ## Data Models
 
-- **Profile** — extends User with unit preference (metric/imperial) and date of birth
+- **Profile** — extends User with date of birth, height (cm), goal weight (kg), sex (male/female), theme (light/dark/auto), and nav_color (8 presets)
 - **NavItem** — per-user navigation items with label, URL, order, visibility, and system flag
 - **WeightLog** — date, weight in kg, notes (one entry per user per date)
 - **MeasurementLog** — date, 11 body part measurements in cm, notes
@@ -121,6 +126,7 @@ fitness-tracker/
 - **Workout** — date, optional template reference, duration, notes
 - **WorkoutExercise** — exercise logged in a specific workout, with copied target fields
 - **Set** — reps, weight in kg, warmup flag
+- **CardioLog** — date, activity name, duration (minutes), distance (km), notes
 - **ProgressPhoto** — image file, date, body part label, notes
 
 ## Progressive Overload

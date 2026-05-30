@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Log Cardio{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Log Cardio</h1>
+
+<form method="post" class="bg-white rounded-xl shadow p-4 max-w-md">
+    {% csrf_token %}
+    <label class="block mb-3">
+        <span class="text-gray-700">Date</span>
+        <input type="date" name="date" id="id_date" required
+               class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
+    </label>
+
+    <label class="block mb-3">
+        <span class="text-gray-700">Activity</span>
+        <select name="activity" required id="id_activity"
+                class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
+            <option value="">Select activity...</option>
+            <option value="Running">Running</option>
+            <option value="Cycling">Cycling</option>
+            <option value="Swimming">Swimming</option>
+            <option value="Walking">Walking</option>
+            <option value="Treadmill">Treadmill</option>
+            <option value="Elliptical">Elliptical</option>
+            <option value="Rowing">Rowing</option>
+            <option value="Stair Climber">Stair Climber</option>
+            <option value="HIIT">HIIT</option>
+            <option value="Other">Other</option>
+        </select>
+    </label>
+
+    <div class="mb-3">
+        <label class="block">
+            <span class="text-gray-700 text-sm font-medium">Duration (minutes)</span>
+            <input type="number" name="duration" min="1" required
+                   class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
+                   placeholder="30">
+        </label>
+    </div>
+
+    <div class="mb-3">
+        <label class="block">
+            <span class="text-gray-700 text-sm font-medium">Distance (miles)</span>
+            <input type="number" name="distance" id="id_distance" step="0.01" inputmode="decimal"
+                   class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
+                   placeholder="Optional">
+        </label>
+    </div>
+
+<script>
+(function() {
+    var d = new Date();
+    var local = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    var el = document.getElementById('id_date');
+    el.value = local;
+    el.max = local;
+
+    var act = document.getElementById('id_activity');
+    var dist = document.getElementById('id_distance');
+    function toggleDistance() {
+        var v = act.value;
+        if (v === 'Running' || v === 'Cycling') {
+            dist.required = true;
+            dist.placeholder = 'Required';
+        } else {
+            dist.required = false;
+            dist.placeholder = 'Optional';
+        }
+    }
+    act.addEventListener('change', toggleDistance);
+    toggleDistance();
+})();
+</script>
+
+    <label class="block mb-4">
+        <span class="text-gray-700">Notes</span>
+        <textarea name="notes" rows="2" class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"></textarea>
+    </label>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+    <a href="{% url 'tracker:cardio_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
+</form>
+
+{% endblock %}

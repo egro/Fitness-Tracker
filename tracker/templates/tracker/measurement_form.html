@@ -9,7 +9,7 @@
     {% csrf_token %}
     <label class="block mb-3">
         <span class="text-gray-700">Date</span>
-        <input type="date" name="date" value="{{ today }}" max="{{ max_date }}" required
+        <input type="date" name="date" id="id_date" required
                class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
     </label>
 
@@ -79,4 +79,7 @@
     <a href="{% url 'tracker:measurement_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
 </form>
 
+<script>
+(function(){var d=new Date(),l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),e=document.getElementById('id_date');e.value=l;e.max=l})();
+</script>
 {% endblock %}

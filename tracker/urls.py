@@ -50,8 +50,13 @@ urlpatterns = [
         views.workout_exercise_remove,
         name="workout_exercise_remove",
     ),
+    path("workouts/<int:pk>/reorder/", views.workout_reorder, name="workout_reorder"),
     path("workouts/<int:pk>/finish/", views.workout_finish, name="workout_finish"),
     path("workouts/<int:pk>/delete/", views.workout_delete, name="workout_delete"),
+    # Cardio
+    path("cardio/", views.cardio_list, name="cardio_list"),
+    path("cardio/add/", views.cardio_add, name="cardio_add"),
+    path("cardio/<int:pk>/delete/", views.cardio_delete, name="cardio_delete"),
     # Sets (HTMX)
     path(
         "workout-exercise/<int:we_pk>/add-set/",
@@ -59,6 +64,8 @@ urlpatterns = [
         name="set_add",
     ),
     path("set/<int:pk>/delete/", views.set_delete, name="set_delete"),
-    # Export
-    path("export/", views.export_data, name="export"),
+    # Export / Import
+    path("export/", views.export_data, name="import_export"),
+    path("export/all/", views.export_all, name="export_all"),
+    path("import/", views.import_data, name="import_data"),
 ]

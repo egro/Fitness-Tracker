@@ -13,8 +13,28 @@
             {{ last_weight.weight_kg|convert_wt:user }} {% weight_unit_tag user %}
         </p>
         {% if weight_change is not None %}
-        <p class="text-sm mt-1 {% if weight_change > 0 %}text-red-500{% elif weight_change < 0 %}text-green-500{% endif %}">
+        <p class="text-sm mt-1 {% if goal_direction == 'gain' %}{% if weight_change > 0 %}text-green-500{% elif weight_change < 0 %}text-red-500{% endif %}{% else %}{% if weight_change > 0 %}text-red-500{% elif weight_change < 0 %}text-green-500{% endif %}{% endif %}">
             {{ weight_change|floatformat:1 }} {% weight_unit_tag user %} (7 days)
+        </p>
+        {% endif %}
+        {% if bmi %}
+        <p class="text-sm mt-1 text-gray-500">BMI: {{ bmi }} <span class="text-gray-400">({{ bmi_category }})</span></p>
+        {% endif %}
+        {% if body_fat_pct %}
+        <p class="text-sm mt-1 text-gray-500">
+            Body Fat: {{ body_fat_pct }}%
+            {% if lean_mass_display %}
+            <span class="text-gray-400">| Lean: {{ lean_mass_display }} {% weight_unit_tag user %} | Fat: {{ fat_mass_display }} {% weight_unit_tag user %}</span>
+            {% endif %}
+        </p>
+        {% endif %}
+        {% if goal_remaining_lbs is not None %}
+        <p class="text-sm mt-1">
+            {% if goal_reached %}
+            <span class="text-green-500 font-medium">Goal reached!</span>
+            {% else %}
+            <span class="text-gray-500">{{ goal_remaining_lbs }} {% weight_unit_tag user %} to {{ goal_direction }}</span>
+            {% endif %}
         </p>
         {% endif %}
         <p class="text-xs text-gray-400 mt-1">{{ last_weight.date }}</p>
@@ -33,6 +53,7 @@
             <a href="{% url 'tracker:weight_add' %}" class="block text-blue-600 hover:underline">+ Log Weight</a>
             <a href="{% url 'tracker:measurement_add' %}" class="block text-blue-600 hover:underline">+ Log Measurements</a>
             <a href="{% url 'tracker:workout_add' %}" class="block text-blue-600 hover:underline">+ Start Workout</a>
+            <a href="{% url 'tracker:cardio_add' %}" class="block text-blue-600 hover:underline">+ Log Cardio</a>
         </div>
     </div>
 </div>
@@ -91,62 +112,71 @@
 
 {% if has_exercise_progress %}
 <div class="bg-white rounded-xl shadow p-4 mb-6">
-    <div class="flex items-center justify-between mb-2">
-        <h2 class="text-lg font-bold">Exercise Progression</h2>
-        <select id="exerciseSelect" class="rounded border border-gray-300 px-3 py-1 text-sm"
-                onchange="updateExerciseChart()">
-            {% for name in exercise_names %}
-            <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <canvas id="exerciseChart" height="200"></canvas>
+    <h2 class="text-lg font-bold mb-2">Exercise Progression</h2>
+    <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
+    <canvas id="exerciseChart" height="250"></canvas>
 </div>
 <script>
-    var exerciseData = {{ exercise_progress_json|safe }};
+    var exerciseLabels = {{ exercise_labels|safe }};
+    var exerciseDatasets = {{ exercise_datasets|safe }};
     var wu = '{{ wu }}';
-    var exerciseChart = null;
 
-    function updateExerciseChart() {
-        var sel = document.getElementById('exerciseSelect');
-        var points = exerciseData[sel.value] || [];
-        var labels = points.map(function(p) { return p.date; });
-        var values = points.map(function(p) { return p.weight; });
-        var reps = points.map(function(p) { return p.reps; });
-
-        if (exerciseChart) exerciseChart.destroy();
-
-        exerciseChart = new Chart(document.getElementById('exerciseChart'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Weight (' + wu + ')',
-                    data: values,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    tension: 0.3,
-                    fill: true,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(ctx) {
+    new Chart(document.getElementById('exerciseChart'), {
+        type: 'line',
+        data: {
+            labels: exerciseLabels,
+            datasets: exerciseDatasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(ctx) {
+                            var reps = ctx.dataset.reps;
+                            if (reps && reps[ctx.dataIndex] != null) {
                                 return 'Reps: ' + reps[ctx.dataIndex];
                             }
+                            return '';
                         }
                     }
-                },
-                scales: { y: { beginAtZero: false } }
-            }
-        });
-    }
+                }
+            },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+</script>
+{% endif %}
 
-    document.addEventListener('DOMContentLoaded', updateExerciseChart);
+{% if has_cardio_data %}
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+    <h2 class="text-lg font-bold mb-2">Cardio Activity (180 days)</h2>
+    <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
+    <canvas id="cardioChart" height="250"></canvas>
+</div>
+<script>
+    new Chart(document.getElementById('cardioChart'), {
+        type: 'line',
+        data: {
+            labels: {{ cardio_labels|safe }},
+            datasets: {{ cardio_datasets|safe }}
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.dataset.label + ': ' + ctx.parsed.y + ' min';
+                        }
+                    }
+                }
+            },
+            scales: { y: { beginAtZero: false, title: { display: true, text: 'Minutes' } } }
+        }
+    });
 </script>
 {% endif %}
 
@@ -175,7 +205,30 @@
         {% endif %}
     </div>
 
-
+    <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-lg font-bold">Recent Cardio</h2>
+            <a href="{% url 'tracker:cardio_list' %}" class="text-sm text-blue-600 hover:underline">View all</a>
+        </div>
+        {% if recent_cardio %}
+        <ul class="divide-y">
+            {% for c in recent_cardio %}
+            <li class="py-2">
+                <span class="font-medium">{{ c.date }}</span>
+                <span class="ml-2">{{ c.activity }}</span>
+                <span class="text-gray-500 text-sm">({{ c.duration_minutes }} min</span>
+                {% if c.distance_km %}
+                <span class="text-gray-500 text-sm">, {{ c.distance_km|convert_dist:user }} mi)</span>
+                {% else %}
+                <span class="text-gray-500 text-sm">)</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 text-sm">No cardio logged yet.</p>
+        {% endif %}
+    </div>
 </div>
 
 {% endblock %}

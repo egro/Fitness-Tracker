@@ -14,16 +14,22 @@
 <div class="space-y-4">
     {% for cat in categories %}
     <div class="bg-white rounded-xl shadow">
-        <div class="px-4 py-2 bg-gray-100 font-bold rounded-t-xl">{{ cat.name }}</div>
+        <div class="px-4 py-2 font-bold rounded-t-xl text-white tracking-wide"
+             style="background-color: {{ user.profile.nav_color_hex }}; filter: brightness(0.85) saturate(0.7);">{{ cat.name }}</div>
         <ul class="divide-y">
             {% for exercise in cat.cat_exercises %}
             <li class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
-                <span>{{ exercise.name }}</span>
+                <span>
+                    {{ exercise.name }}
+                    {% if exercise.is_public and exercise.user != user %}
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded ml-1">Public</span>
+                    {% endif %}
+                </span>
                 {% if exercise.user == user %}
                 <div class="flex gap-2">
                     <a href="{% url 'tracker:exercise_edit' exercise.pk %}" class="text-yellow-600 hover:underline text-xs">Edit</a>
                     <a href="{% url 'tracker:exercise_delete' exercise.pk %}" class="text-red-500 hover:underline text-xs"
-                       onclick="return confirm('Delete {{ exercise.name }}?')">Delete</a>
+                       onclick="return confirm('Delete {{ exercise.name|escapejs }}?')">Delete</a>
                 </div>
                 {% endif %}
             </li>
@@ -38,16 +44,22 @@
 
     {% if uncategorized %}
     <div class="bg-white rounded-xl shadow">
-        <div class="px-4 py-2 bg-gray-100 font-bold rounded-t-xl">Other</div>
+        <div class="px-4 py-2 font-bold rounded-t-xl text-white tracking-wide"
+             style="background-color: {{ user.profile.nav_color_hex }}; filter: brightness(0.85) saturate(0.7);">Other</div>
         <ul class="divide-y">
             {% for exercise in uncategorized %}
             <li class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
-                <span>{{ exercise.name }}</span>
+                <span>
+                    {{ exercise.name }}
+                    {% if exercise.is_public and exercise.user != user %}
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded ml-1">Public</span>
+                    {% endif %}
+                </span>
                 {% if exercise.user == user %}
                 <div class="flex gap-2">
                     <a href="{% url 'tracker:exercise_edit' exercise.pk %}" class="text-yellow-600 hover:underline text-xs">Edit</a>
                     <a href="{% url 'tracker:exercise_delete' exercise.pk %}" class="text-red-500 hover:underline text-xs"
-                       onclick="return confirm('Delete {{ exercise.name }}?')">Delete</a>
+                       onclick="return confirm('Delete {{ exercise.name|escapejs }}?')">Delete</a>
                 </div>
                 {% endif %}
             </li>
