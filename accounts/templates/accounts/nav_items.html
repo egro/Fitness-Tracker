@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Customize Navigation{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Customize Navigation</h1>
+
+<p class="text-gray-500 mb-4">Reorder items and toggle which ones appear as quick links in the header bar. The full menu always shows everything.</p>
+
+<form method="post" class="space-y-2 max-w-lg">
+    {% csrf_token %}
+    {% for item in items %}
+    <div class="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between {% if not item.is_visible %}opacity-50{% endif %}">
+        <div class="flex items-center gap-3">
+            <span class="text-gray-400 text-sm">{{ item.order|add:1 }}.</span>
+            <span class="font-medium">{{ item.label }}</span>
+            {% if item.is_system %}
+            <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">required</span>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-1">
+            {% if not forloop.first and not item.is_system %}
+            <button type="submit" name="action" value="move_up" class="p-1 hover:bg-gray-100 rounded text-gray-500"
+                    onclick="this.form.action.value='move_up';this.form.item_id.value='{{ item.pk }}'">
+                &#9650;
+            </button>
+            {% endif %}
+            {% if not forloop.last and not item.is_system %}
+            <button type="submit" name="action" value="move_down" class="p-1 hover:bg-gray-100 rounded text-gray-500"
+                    onclick="this.form.action.value='move_down';this.form.item_id.value='{{ item.pk }}'">
+                &#9660;
+            </button>
+            {% endif %}
+            {% if not item.is_system %}
+            <button type="submit" name="action" value="toggle" class="p-1 hover:bg-gray-100 rounded ml-2
+                    {% if item.is_visible %}text-green-600{% else %}text-gray-400{% endif %}"
+                    onclick="this.form.action.value='toggle';this.form.item_id.value='{{ item.pk }}'">
+                {% if item.is_visible %}&#9673;{% else %}&#9675;{% endif %}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-gray-500">No nav items.</p>
+    {% endfor %}
+    <input type="hidden" name="item_id" id="nav_item_id">
+</form>
+
+<form method="post" class="mt-6">
+    {% csrf_token %}
+    <button type="submit" name="action" value="reset" class="text-red-500 hover:underline text-sm"
+            onclick="return confirm('Reset navigation to defaults?')">
+        Reset to defaults
+    </button>
+</form>
+
+{% endblock %}

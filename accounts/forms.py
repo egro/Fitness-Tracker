@@ -24,7 +24,7 @@ class RegisterForm(UserCreationForm):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ["units", "date_of_birth"]
+        fields = ["date_of_birth"]
         widgets = {
             "date_of_birth": forms.DateInput(attrs={"type": "date"}),
         }

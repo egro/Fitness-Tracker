@@ -12,23 +12,14 @@
                class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
     </label>
 
-    <div class="flex gap-3 mb-3">
-        <label class="block flex-1">
-            <span class="text-gray-700 text-sm font-medium">kg</span>
-            <input type="number" id="id_weight_kg" step="0.01" inputmode="decimal"
-                   class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
-                   placeholder="0.00">
-        </label>
-        <label class="block flex-1">
-            <span class="text-gray-700 text-sm font-medium">lbs</span>
-            <input type="number" id="id_weight_lbs" step="0.1" inputmode="decimal"
+    <div class="mb-3">
+        <label class="block">
+            <span class="text-gray-700 text-sm font-medium">Weight (lbs)</span>
+            <input type="number" name="weight" step="0.1" inputmode="decimal"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
                    placeholder="0.0">
         </label>
     </div>
-    <p class="text-xs text-gray-400 mb-3">Type in either field — the other converts automatically.</p>
-
-    <input type="hidden" name="weight" id="id_weight">
 
     <label class="block mb-4">
         <span class="text-gray-700">Notes</span>
@@ -38,31 +29,6 @@
     <a href="{% url 'tracker:weight_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
 </form>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var kgInput = document.getElementById('id_weight_kg');
-        var lbsInput = document.getElementById('id_weight_lbs');
-        var hiddenInput = document.getElementById('id_weight');
 
-        function sync(fromKg) {
-            var val = parseFloat(fromKg ? kgInput.value : lbsInput.value);
-            if (!isNaN(val) && val > 0) {
-                if (fromKg) {
-                    lbsInput.value = (val * 2.20462).toFixed(1);
-                } else {
-                    kgInput.value = (val / 2.20462).toFixed(2);
-                }
-                hiddenInput.value = kgInput.value;
-            } else {
-                if (!fromKg) kgInput.value = '';
-                if (fromKg) lbsInput.value = '';
-                hiddenInput.value = '';
-            }
-        }
-
-        kgInput.addEventListener('input', function () { sync(true); });
-        lbsInput.addEventListener('input', function () { sync(false); });
-    });
-</script>
 
 {% endblock %}

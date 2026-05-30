@@ -20,8 +20,12 @@ class ExerciseCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Exercise)
 class ExerciseAdmin(admin.ModelAdmin):
-    list_display = ["name", "category", "user"]
-    list_filter = ["category", "user"]
+    list_display = ["name", "categories_list", "user"]
+    list_filter = ["categories", "user"]
+
+    def categories_list(self, obj):
+        return ", ".join(c.name for c in obj.categories.all())
+    categories_list.short_description = "Categories"
 
 
 @admin.register(WeightLog)

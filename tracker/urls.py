@@ -17,14 +17,19 @@ urlpatterns = [
         views.measurement_delete,
         name="measurement_delete",
     ),
+    # Categories / Muscles
+    path("categories/", views.category_list, name="category_list"),
+    path("muscles/", views.muscle_list, name="muscle_list"),
     # Exercises
     path("exercises/", views.exercise_list, name="exercise_list"),
     path("exercises/add/", views.exercise_add, name="exercise_add"),
+    path("exercises/<int:pk>/edit/", views.exercise_edit, name="exercise_edit"),
     path("exercises/<int:pk>/delete/", views.exercise_delete, name="exercise_delete"),
     # Templates
     path("templates/", views.template_list, name="template_list"),
     path("templates/add/", views.template_add, name="template_add"),
     path("templates/<int:pk>/", views.template_detail, name="template_detail"),
+    path("templates/<int:pk>/edit/", views.template_edit, name="template_edit"),
     path("templates/<int:pk>/delete/", views.template_delete, name="template_delete"),
     path(
         "templates/<int:pk>/start/",

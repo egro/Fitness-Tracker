@@ -9,29 +9,35 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
-    <nav class="bg-blue-600 text-white shadow-lg">
+    <nav class="relative bg-blue-600 text-white shadow-lg">
         <div class="max-w-4xl mx-auto px-4">
-            <div class="flex items-center justify-between h-14">
-                <a href="{% url 'tracker:dashboard' %}" class="font-bold text-lg">FT</a>
-                <button id="mobile-menu-btn" class="md:hidden p-2" onclick="document.getElementById('nav-links').classList.toggle('hidden')">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                <div id="nav-links" class="hidden md:flex md:items-center md:gap-1 absolute md:relative top-14 md:top-0 left-0 w-full md:w-auto bg-blue-600 md:bg-transparent z-10">
-                    {% if user.is_authenticated %}
-                    <a href="{% url 'tracker:weight_add' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Log Weight</a>
-                    <a href="{% url 'tracker:measurement_add' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Measure</a>
-                    <a href="{% url 'tracker:exercise_list' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Exercises</a>
-                    <a href="{% url 'tracker:workout_add' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Workout</a>
-                    <a href="{% url 'photos:gallery' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Photos</a>
-                    <div class="border-t border-blue-500 md:border-0 md:ml-4">
-                        <span class="block px-4 py-1 text-blue-200 text-sm">{{ user.username }}</span>
-                        <a href="{% url 'accounts:profile' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Settings</a>
-                        <a href="{% url 'accounts:logout' %}" class="block px-4 py-2 hover:bg-blue-700 md:rounded">Logout</a>
-                    </div>
+            <div class="flex items-center justify-between h-14 gap-2">
+                <a href="{% url 'tracker:dashboard' %}" class="font-bold text-lg shrink-0">FT</a>
+                {% if user.is_authenticated %}
+                <div class="hidden md:flex items-center gap-1 overflow-x-auto">
+                    {% for item in user.nav_items.all %}
+                    {% if item.is_visible and not item.is_system %}
+                    <a href="{% url item.url_name %}" class="px-3 py-1.5 text-sm rounded hover:bg-blue-700 whitespace-nowrap">{{ item.label }}</a>
                     {% endif %}
+                    {% endfor %}
                 </div>
+                <div class="relative shrink-0">
+                    <button id="mobile-menu-btn" class="p-2" onclick="document.getElementById('nav-links').classList.toggle('hidden')">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    <div id="nav-links" class="hidden absolute right-0 top-full mt-1 bg-blue-700 shadow-lg rounded-lg z-10 min-w-48">
+                        <div class="px-4 py-2 space-y-1">
+                            {% for item in user.nav_items.all %}
+                            <a href="{% url item.url_name %}" class="block px-4 py-2 rounded hover:bg-blue-700">{{ item.label }}</a>
+                            {% endfor %}
+                            <hr class="border-blue-500 my-2">
+                            <span class="block px-4 py-1 text-blue-200 text-sm">{{ user.username }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </nav>

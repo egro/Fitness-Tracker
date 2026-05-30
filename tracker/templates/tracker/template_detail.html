@@ -5,7 +5,10 @@
 
 <div class="flex justify-between items-center mb-4">
     <h1 class="text-2xl font-bold">{{ template.name }}</h1>
-    <a href="{% url 'tracker:template_start_workout' template.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Start Workout</a>
+    <div class="flex gap-2">
+        <a href="{% url 'tracker:template_edit' template.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit</a>
+        <a href="{% url 'tracker:template_start_workout' template.pk %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Start Workout</a>
+    </div>
 </div>
 
 {% if template.description %}
@@ -22,7 +25,10 @@
             </span>
             <span class="text-sm text-gray-500">
                 {% if te.target_sets %}{{ te.target_sets }} sets{% endif %}
-                {% if te.target_reps %} x {{ te.target_reps }}{% endif %}
+                {% if te.target_reps_min or te.target_reps_max %}
+                    x {% if te.target_reps_min %}{{ te.target_reps_min }}{% else %}?{% endif %}
+                    {% if te.target_reps_max and te.target_reps_max != te.target_reps_min %}-{{ te.target_reps_max }}{% endif %}
+                {% endif %}
                 {% if te.target_weight_kg %} @ {{ te.target_weight_kg|convert_wt:user }}{% endif %}
             </span>
         </li>

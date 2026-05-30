@@ -18,9 +18,7 @@ class ExerciseCategory(models.Model):
 class Exercise(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=200)
-    category = models.ForeignKey(
-        ExerciseCategory, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    categories = models.ManyToManyField(ExerciseCategory, blank=True, related_name="exercises")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -91,6 +89,8 @@ class WorkoutTemplateExercise(models.Model):
     order = models.PositiveIntegerField(default=0)
     target_sets = models.PositiveIntegerField(null=True, blank=True)
     target_reps = models.CharField(max_length=50, blank=True)
+    target_reps_min = models.PositiveIntegerField(null=True, blank=True)
+    target_reps_max = models.PositiveIntegerField(null=True, blank=True)
     target_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
     class Meta:
@@ -126,6 +126,9 @@ class WorkoutExercise(models.Model):
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
     order = models.PositiveIntegerField(default=0)
     notes = models.TextField(blank=True)
+    target_sets = models.PositiveIntegerField(null=True, blank=True)
+    target_reps_min = models.PositiveIntegerField(null=True, blank=True)
+    target_reps_max = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["order"]
@@ -141,7 +144,6 @@ class Set(models.Model):
     set_number = models.PositiveIntegerField()
     reps = models.PositiveIntegerField(null=True, blank=True)
     weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    rir = models.PositiveIntegerField(null=True, blank=True, verbose_name="Reps in Reserve")
     is_warmup = models.BooleanField(default=False)
 
     class Meta:

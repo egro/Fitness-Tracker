@@ -31,15 +31,35 @@
                onclick="return confirm('Remove this exercise?')">Remove</a>
         </div>
 
+        {% if we.target_sets or we.target_reps_min or we.target_reps_max %}
+        <div class="px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-800 flex flex-wrap gap-x-3">
+            <span>
+                Target:
+                {% if we.target_sets %}{{ we.target_sets }} sets{% endif %}
+                {% if we.target_reps_min or we.target_reps_max %}
+                    x {% if we.target_reps_min %}{{ we.target_reps_min }}{% else %}?{% endif %}
+                    {% if we.target_reps_max and we.target_reps_max != we.target_reps_min %}-{{ we.target_reps_max }}{% endif %}
+                {% endif %}
+            </span>
+            {% if we.completed_goal %}
+            <span class="font-semibold text-green-700">&checkmark; Goal met this session</span>
+            {% endif %}
+            {% if we.weight_suggestion %}
+            <span class="font-semibold text-blue-700">
+                Suggested: {{ we.weight_suggestion.kg|to_lbs }} lbs
+                ({{ we.weight_suggestion.diff }} from last time)
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if we.sets.all %}
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-gray-500 text-xs">
                     <th class="px-4 py-1 text-left">Set</th>
                     <th class="px-4 py-1 text-left">Reps</th>
-                    <th class="px-4 py-1 text-left">kg</th>
-                    <th class="px-4 py-1 text-left">lbs</th>
-                    <th class="px-4 py-1 text-left">RIR</th>
+                    <th class="px-4 py-1 text-left">Weight</th>
                     <th class="px-4 py-1"></th>
                 </tr>
             </thead>
@@ -50,9 +70,7 @@
                         {% if s.is_warmup %}Warmup{% else %}{{ s.set_number }}{% endif %}
                     </td>
                     <td class="px-4 py-1">{{ s.reps|default:"-" }}</td>
-                    <td class="px-4 py-1">{{ s.weight_kg|floatformat:1|default:"-" }}</td>
-                    <td class="px-4 py-1">{{ s.weight_kg|to_lbs|default:"-" }}</td>
-                    <td class="px-4 py-1">{{ s.rir|default:"-" }}</td>
+                    <td class="px-4 py-1">{{ s.weight_kg|to_lbs }} lbs</td>
                     <td class="px-4 py-1 text-right">
                         <a href="{% url 'tracker:set_delete' s.pk %}" class="text-red-400 hover:text-red-600 text-xs"
                            onclick="return confirm('Delete set?')">✕</a>
@@ -66,7 +84,7 @@
         <div class="px-4 py-3 border-t">
             <details>
                 <summary class="text-blue-600 text-sm cursor-pointer hover:underline">+ Add Set</summary>
-                <form method="post" action="{% url 'tracker:set_add' we.pk %}" class="mt-2 grid grid-cols-5 gap-2">
+                <form method="post" action="{% url 'tracker:set_add' we.pk %}" class="mt-2 grid grid-cols-4 gap-2">
                     {% csrf_token %}
                     <label class="block text-sm">
                         Reps
@@ -74,23 +92,12 @@
                     </label>
                     <div class="col-span-2">
                         <label class="block text-sm">
-                            <span class="text-gray-500">kg</span>
-                            <input type="number" id="set_kg_{{ we.pk }}" step="any"
-                                   class="w-full rounded border px-2 py-1 text-sm"
-                                   data-target="set_lbs_{{ we.pk }}" data-unit="kg">
-                        </label>
-                        <label class="block text-sm mt-1">
                             <span class="text-gray-500">lbs</span>
-                            <input type="number" id="set_lbs_{{ we.pk }}" step="0.5"
+                            <input type="number" name="weight" step="0.5"
                                    class="w-full rounded border px-2 py-1 text-sm"
-                                   data-target="set_kg_{{ we.pk }}" data-unit="lbs">
+                                   {% if we.weight_suggestion %}value="{{ we.weight_suggestion.kg|to_lbs }}"{% endif %}>
                         </label>
-                        <input type="hidden" name="weight" id="set_weight_{{ we.pk }}">
                     </div>
-                    <label class="block text-sm">
-                        RIR
-                        <input type="number" name="rir" class="w-full rounded border px-2 py-1 text-sm">
-                    </label>
                     <div class="flex flex-col gap-1">
                         <label class="text-sm flex items-center gap-1 pt-5">
                             <input type="checkbox" name="is_warmup">
@@ -133,27 +140,6 @@
     </details>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('[data-unit]').forEach(function (input) {
-            input.addEventListener('input', function () {
-                var target = document.getElementById(this.dataset.target);
-                var hidden = this.closest('form').querySelector('[name="weight"]');
-                var val = parseFloat(this.value);
-                if (!isNaN(val) && val > 0) {
-                    if (this.dataset.unit === 'kg') {
-                        target.value = (val * 2.20462).toFixed(1);
-                    } else {
-                        target.value = (val / 2.20462).toFixed(2);
-                    }
-                    hidden.value = this.closest('form').querySelector('[data-unit="kg"]').value;
-                } else {
-                    target.value = '';
-                    hidden.value = '';
-                }
-            });
-        });
-    });
-</script>
+
 
 {% endblock %}

@@ -9,5 +9,5 @@ services:
     environment:
       - DJANGO_SECRET_KEY=change-this-to-a-random-secret-key
       - DJANGO_DEBUG=false
-      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+      - DJANGO_ALLOWED_HOSTS=*
     restart: unless-stopped

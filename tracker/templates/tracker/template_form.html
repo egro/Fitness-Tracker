@@ -1,39 +1,88 @@
 {% extends "base.html" %}
-{% block title %}Create Template{% endblock %}
+{% load tracker_tags %}
+{% block title %}{% if editing %}Edit{% else %}Create{% endif %} Template{% endblock %}
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-4">Create Workout Template</h1>
+<h1 class="text-2xl font-bold mb-4">{% if editing %}Edit{% else %}Create{% endif %} Workout Template</h1>
 
-<form method="post" class="bg-white rounded-xl shadow p-4 max-w-lg">
+<form method="post" class="bg-white rounded-xl shadow p-4 max-w-2xl">
     {% csrf_token %}
     <label class="block mb-2">
         <span class="text-gray-700">Template Name</span>
-        <input type="text" name="name" required
+        <input type="text" name="name" value="{{ template_name|default:'' }}" required
                class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
     </label>
     <label class="block mb-4">
         <span class="text-gray-700">Description</span>
-        <textarea name="description" rows="2" class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"></textarea>
+        <textarea name="description" rows="2" class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">{{ template_description|default:'' }}</textarea>
     </label>
 
     <fieldset class="mb-4">
-        <legend class="font-medium mb-2">Exercises (select all that apply)</legend>
-        <div class="max-h-64 overflow-y-auto border rounded p-2 space-y-1">
-            {% for ex in exercises %}
-            <label class="flex items-center gap-2">
-                <input type="checkbox" name="exercises" value="{{ ex.pk }}">
-                <span>{{ ex.name }}</span>
-                {% if ex.category %}
-                <span class="text-xs text-gray-400">({{ ex.category.name }})</span>
-                {% endif %}
-            </label>
-            {% empty %}
-            <p class="text-gray-500 text-sm">No exercises found. <a href="{% url 'tracker:exercise_add' %}" class="text-blue-600 hover:underline">Add some</a> first.</p>
-            {% endfor %}
+        <legend class="font-medium mb-2">Exercises</legend>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-gray-500 text-xs border-b">
+                        <th class="px-2 py-1 text-left">Include</th>
+                        <th class="px-2 py-1 text-left">Exercise</th>
+                        <th class="px-2 py-1 text-left">Sets</th>
+                        <th class="px-2 py-1 text-left">Min Reps</th>
+                        <th class="px-2 py-1 text-left">Max Reps</th>
+                        <th class="px-2 py-1 text-left">Weight ({{ wu }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in exercise_data %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-2 py-2">
+                            <input type="checkbox" name="exercises" value="{{ item.exercise.pk }}"
+                                   {% if item.checked %}checked{% endif %}>
+                        </td>
+                        <td class="px-2 py-2">
+                            <span class="font-medium">{{ item.exercise.name }}</span>
+                            {% with cats=item.exercise.categories.all %}
+                            {% if cats %}
+                            <span class="text-xs text-gray-400">({{ cats|join:", " }})</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="px-2 py-2">
+                            <input type="number" name="target_sets_{{ item.exercise.pk }}"
+                                   value="{{ item.target_sets|default:'' }}" min="0"
+                                   class="w-16 rounded border px-2 py-1">
+                        </td>
+                        <td class="px-2 py-2">
+                            <input type="number" name="target_reps_min_{{ item.exercise.pk }}"
+                                   value="{{ item.target_reps_min|default:'' }}" min="0"
+                                   class="w-16 rounded border px-2 py-1">
+                        </td>
+                        <td class="px-2 py-2">
+                            <input type="number" name="target_reps_max_{{ item.exercise.pk }}"
+                                   value="{{ item.target_reps_max|default:'' }}" min="0"
+                                   class="w-16 rounded border px-2 py-1">
+                        </td>
+                        <td class="px-2 py-2">
+                            <input type="number" name="target_weight_{{ item.exercise.pk }}"
+                                   value="{{ item.target_weight_display|default:'' }}" step="any"
+                                   class="w-20 rounded border px-2 py-1">
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-gray-500">
+                            No exercises found.
+                            <a href="{% url 'tracker:exercise_add' %}" class="text-blue-600 hover:underline">Add some</a> first.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </fieldset>
 
-    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Template</button>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        {% if editing %}Save Changes{% else %}Create Template{% endif %}
+    </button>
     <a href="{% url 'tracker:template_list' %}" class="ml-2 text-gray-600 hover:underline">Cancel</a>
 </form>
 

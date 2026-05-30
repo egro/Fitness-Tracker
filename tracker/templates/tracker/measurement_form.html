@@ -1,10 +1,9 @@
 {% extends "base.html" %}
-{% load tracker_tags %}
 {% block title %}Log Measurements{% endblock %}
 {% block content %}
 
 <h1 class="text-2xl font-bold mb-4">Body Measurements</h1>
-<p class="text-gray-500 text-sm mb-4">Units: {% length_unit_tag user %}</p>
+<p class="text-gray-500 text-sm mb-4">Units: inches</p>
 
 <form method="post" class="bg-white rounded-xl shadow p-4 max-w-lg">
     {% csrf_token %}
@@ -17,57 +16,57 @@
     <div class="grid grid-cols-2 gap-x-4 gap-y-3">
         <label class="block">
             <span class="text-gray-600 text-sm">Waist</span>
-            <input type="number" name="waist_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="waist_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Chest</span>
-            <input type="number" name="chest_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="chest_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Left Arm</span>
-            <input type="number" name="left_arm_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="left_arm_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Right Arm</span>
-            <input type="number" name="right_arm_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="right_arm_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Left Thigh</span>
-            <input type="number" name="left_thigh_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="left_thigh_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Right Thigh</span>
-            <input type="number" name="right_thigh_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="right_thigh_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Left Calf</span>
-            <input type="number" name="left_calf_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="left_calf_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Right Calf</span>
-            <input type="number" name="right_calf_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="right_calf_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Hips</span>
-            <input type="number" name="hips_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="hips_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Shoulders</span>
-            <input type="number" name="shoulders_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="shoulders_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
         <label class="block">
             <span class="text-gray-600 text-sm">Neck</span>
-            <input type="number" name="neck_cm" step="0.1" placeholder="{% length_unit_tag user %}"
+            <input type="number" name="neck_cm" step="0.1" placeholder="in"
                    class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
         </label>
     </div>

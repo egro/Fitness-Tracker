@@ -1,11 +1,12 @@
 import csv
 import json
+from collections import defaultdict
 from datetime import date, timedelta
 from django.http import HttpResponse, HttpResponseBadRequest
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Avg, Max
+from django.db.models import Avg, Max, Prefetch
 from .models import (
     ExerciseCategory, Exercise, WeightLog, MeasurementLog,
     WorkoutTemplate, WorkoutTemplateExercise, Workout, WorkoutExercise, Set,
@@ -19,9 +20,7 @@ def _weight_data(user, days=30):
     labels = [str(l.date) for l in logs]
     values = []
     for l in logs:
-        v = float(l.weight_kg)
-        if user.profile.units == "imperial":
-            v = round(v * 2.20462, 1)
+        v = round(float(l.weight_kg) * 2.20462, 1)
         values.append(v)
     return labels, values
 
@@ -66,9 +65,7 @@ def _measurement_data(user, days=180):
         for log in logs:
             val = getattr(log, field)
             if val is not None:
-                v = float(val)
-                if user.profile.units == "imperial":
-                    v = round(v * 0.393701, 1)
+                v = round(float(val) * 0.393701, 1)
                 values.append(v)
             else:
                 values.append(None)
@@ -99,12 +96,34 @@ def dashboard(request):
 
     weight_change = None
     if last_weight and week_ago_weight:
-        weight_change = float(last_weight.weight_kg) - float(week_ago_weight.weight_kg)
-        if request.user.profile.units == "imperial":
-            weight_change = round(weight_change * 2.20462, 1)
+        weight_change = round(
+            (float(last_weight.weight_kg) - float(week_ago_weight.weight_kg)) * 2.20462, 1
+        )
 
     has_weight_data = bool(weight_labels)
     meas_labels, meas_datasets, has_meas_data = _measurement_data(request.user, 180)
+
+    exercise_progress = defaultdict(list)
+    wes = WorkoutExercise.objects.filter(
+        workout__user=request.user,
+    ).select_related(
+        "exercise", "workout"
+    ).prefetch_related("sets").order_by("workout__date")
+    for we in wes:
+        working = [s for s in we.sets.all() if not s.is_warmup and s.weight_kg and float(s.weight_kg) > 0]
+        if not working:
+            continue
+        heaviest = max(working, key=lambda s: float(s.weight_kg))
+        w = round(float(heaviest.weight_kg) * 2.20462, 1)
+        exercise_progress[we.exercise.name].append({
+            "date": str(we.workout.date),
+            "weight": w,
+            "weight_kg": float(heaviest.weight_kg),
+            "reps": heaviest.reps,
+        })
+    exercise_names = list(exercise_progress.keys())
+    exercise_json = json.dumps(exercise_progress, default=list)
+
     ctx = {
         "recent_weight": recent_weight,
         "recent_measurements": recent_measurements,
@@ -119,6 +138,9 @@ def dashboard(request):
         "has_meas_data": has_meas_data,
         "wu": weight_unit(request.user),
         "lu": length_unit(request.user),
+        "exercise_names": exercise_names,
+        "exercise_progress_json": exercise_json,
+        "has_exercise_progress": bool(exercise_names),
     }
     return render(request, "tracker/dashboard.html", ctx)
 
@@ -129,12 +151,9 @@ def dashboard(request):
 def weight_add(request):
     if request.method == "POST":
         date_val = request.POST.get("date", date.today())
-        weight_val = request.POST.get("weight") or request.POST.get("weight_kg")
-        weight_lbs = request.POST.get("weight_lbs")
+        weight_lbs = request.POST.get("weight")
         notes_val = request.POST.get("notes", "")
-        if weight_val:
-            weight_kg = float(weight_val)
-        elif weight_lbs:
+        if weight_lbs:
             weight_kg = float(weight_lbs) / 2.20462
         else:
             weight_kg = None
@@ -146,10 +165,10 @@ def weight_add(request):
             )
             messages.success(request, "Weight logged!")
             return redirect("tracker:weight_list")
+    today_str = date.today().isoformat()
     return render(request, "tracker/weight_form.html", {
-        "today": date.today(),
-        "max_date": date.today(),
-        "wu": weight_unit(request.user),
+        "today": today_str,
+        "max_date": today_str,
     })
 
 
@@ -187,10 +206,8 @@ def measurement_add(request):
         ]}
         for k in data:
             if data[k] is not None:
-                val = float(data[k])
-                if request.user.profile.units == "imperial":
-                    val = val / 2.54
-                data[k] = round(val, 1)
+                val = round(float(data[k]) / 2.54, 1)
+                data[k] = val
 
         MeasurementLog.objects.update_or_create(
             user=request.user,
@@ -199,10 +216,10 @@ def measurement_add(request):
         )
         messages.success(request, "Measurements saved!")
         return redirect("tracker:measurement_list")
+    today_str = date.today().isoformat()
     return render(request, "tracker/measurement_form.html", {
-        "today": date.today(),
-        "max_date": date.today(),
-        "lu": length_unit(request.user),
+        "today": today_str,
+        "max_date": today_str,
     })
 
 
@@ -224,19 +241,64 @@ def measurement_delete(request, pk):
     return redirect("tracker:measurement_list")
 
 
+# ── Exercise Categories ─────────────────────────────────────────
+
+@login_required
+def category_list(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add":
+            name = request.POST.get("name", "").strip()
+            if name:
+                ExerciseCategory.objects.get_or_create(user=request.user, name=name)
+                messages.success(request, f"Category '{name}' created!")
+        elif action == "rename":
+            pk = request.POST.get("pk")
+            name = request.POST.get("name", "").strip()
+            if pk and name:
+                cat = get_object_or_404(ExerciseCategory, pk=pk, user=request.user)
+                cat.name = name
+                cat.save()
+                messages.success(request, "Category renamed!")
+        elif action == "delete":
+            pk = request.POST.get("pk")
+            if pk:
+                cat = get_object_or_404(ExerciseCategory, pk=pk, user=request.user)
+                cat.delete()
+                messages.success(request, "Category deleted.")
+        return redirect("tracker:category_list")
+    categories = ExerciseCategory.objects.filter(user=request.user).order_by("name")
+    return render(request, "tracker/category_list.html", {"categories": categories})
+
+
 # ── Exercises ───────────────────────────────────────────────────
 
 @login_required
 def exercise_list(request):
-    categories = ExerciseCategory.objects.filter(
-        user__in=[request.user, None]
-    ).distinct()
     exercises = Exercise.objects.filter(
         user__in=[request.user, None]
-    ).select_related("category").order_by("category__name", "name")
+    ).prefetch_related("categories").order_by("name")
     return render(request, "tracker/exercise_list.html", {
-        "categories": categories,
         "exercises": exercises,
+    })
+
+
+@login_required
+def muscle_list(request):
+    categories = ExerciseCategory.objects.filter(
+        user__in=[request.user, None]
+    ).distinct().prefetch_related(
+        Prefetch("exercises", queryset=Exercise.objects.filter(
+            user__in=[request.user, None]
+        ), to_attr="cat_exercises")
+    ).order_by("name")
+    all_exercises = Exercise.objects.filter(
+        user__in=[request.user, None]
+    ).prefetch_related("categories").order_by("name")
+    uncategorized = [ex for ex in all_exercises if not ex.categories.all()]
+    return render(request, "tracker/muscle_list.html", {
+        "categories": categories,
+        "uncategorized": uncategorized,
     })
 
 
@@ -244,29 +306,77 @@ def exercise_list(request):
 def exercise_add(request):
     if request.method == "POST":
         name = request.POST.get("name")
-        category_id = request.POST.get("category")
+        category_ids = request.POST.getlist("categories")
         new_category_name = request.POST.get("new_category", "").strip()
         notes = request.POST.get("notes", "")
-        cat = None
-        if category_id == "__new__" and new_category_name:
+
+        cats = []
+        for cid in category_ids:
+            cat = ExerciseCategory.objects.filter(
+                pk=cid, user__in=[request.user, None]
+            ).first()
+            if cat:
+                cats.append(cat)
+        if new_category_name:
             cat, _ = ExerciseCategory.objects.get_or_create(
                 user=request.user, name=new_category_name,
             )
-        elif category_id:
-            cat = ExerciseCategory.objects.filter(
-                pk=category_id, user__in=[request.user, None]
-            ).first()
+            cats.append(cat)
+
         if name:
-            Exercise.objects.get_or_create(
+            exercise, created = Exercise.objects.get_or_create(
                 user=request.user, name=name,
-                defaults={"category": cat, "notes": notes},
+                defaults={"notes": notes},
             )
+            if not created:
+                exercise.notes = notes
+                exercise.save()
+            if cats:
+                exercise.categories.set(cats)
             messages.success(request, f"Exercise '{name}' added!")
             return redirect("tracker:exercise_list")
     return render(request, "tracker/exercise_form.html", {
         "categories": ExerciseCategory.objects.filter(
             user__in=[request.user, None]
         ).distinct(),
+    })
+
+
+@login_required
+def exercise_edit(request, pk):
+    exercise = get_object_or_404(Exercise, pk=pk, user=request.user)
+    if request.method == "POST":
+        exercise.name = request.POST.get("name", exercise.name)
+        exercise.notes = request.POST.get("notes", "")
+        exercise.save()
+
+        category_ids = request.POST.getlist("categories")
+        new_category_name = request.POST.get("new_category", "").strip()
+        cats = []
+        for cid in category_ids:
+            cat = ExerciseCategory.objects.filter(
+                pk=cid, user__in=[request.user, None]
+            ).first()
+            if cat:
+                cats.append(cat)
+        if new_category_name:
+            cat, _ = ExerciseCategory.objects.get_or_create(
+                user=request.user, name=new_category_name,
+            )
+            cats.append(cat)
+        exercise.categories.set(cats)
+        messages.success(request, f"Exercise '{exercise.name}' updated!")
+        return redirect("tracker:exercise_list")
+
+    categories = ExerciseCategory.objects.filter(
+        user__in=[request.user, None]
+    ).distinct()
+    selected_ids = list(exercise.categories.values_list("pk", flat=True))
+    return render(request, "tracker/exercise_form.html", {
+        "exercise": exercise,
+        "categories": categories,
+        "selected_ids": selected_ids,
+        "editing": True,
     })
 
 
@@ -279,6 +389,51 @@ def exercise_delete(request, pk):
 
 
 # ── Workout Templates ──────────────────────────────────────────
+
+def _build_exercise_data(user, existing_exercises=None):
+    exercises = Exercise.objects.filter(user__in=[user, None]).prefetch_related("categories").order_by("name")
+    existing = {}
+    if existing_exercises is not None:
+        existing = {te.exercise_id: te for te in existing_exercises}
+    data = []
+    for ex in exercises:
+        te = existing.get(ex.pk)
+        data.append({
+            "exercise": ex,
+            "checked": te is not None,
+            "target_sets": te.target_sets if te else None,
+            "target_reps_min": te.target_reps_min if te else None,
+            "target_reps_max": te.target_reps_max if te else None,
+            "target_weight_display": (
+                convert_weight(user, te.target_weight_kg) if te and te.target_weight_kg else None
+            ),
+        })
+    return data
+
+
+def _save_exercise_targets(tpl, exercise_ids, request):
+    for i, eid in enumerate(exercise_ids):
+        if not eid:
+            continue
+        exercise = Exercise.objects.filter(pk=eid).first()
+        if not exercise:
+            continue
+        target_sets = request.POST.get(f"target_sets_{eid}") or None
+        target_reps_min = request.POST.get(f"target_reps_min_{eid}") or None
+        target_reps_max = request.POST.get(f"target_reps_max_{eid}") or None
+        target_weight = request.POST.get(f"target_weight_{eid}") or None
+        if target_weight is not None:
+            target_weight = round(float(target_weight) / 2.20462, 2)
+        WorkoutTemplateExercise.objects.create(
+            template=tpl,
+            exercise=exercise,
+            order=i,
+            target_sets=int(target_sets) if target_sets else None,
+            target_reps_min=int(target_reps_min) if target_reps_min else None,
+            target_reps_max=int(target_reps_max) if target_reps_max else None,
+            target_weight_kg=target_weight,
+        )
+
 
 @login_required
 def template_list(request):
@@ -296,19 +451,37 @@ def template_add(request):
             tpl = WorkoutTemplate.objects.create(
                 user=request.user, name=name, description=description
             )
-            for i, eid in enumerate(exercise_ids):
-                if eid:
-                    exercise = Exercise.objects.filter(pk=eid).first()
-                    if exercise:
-                        WorkoutTemplateExercise.objects.create(
-                            template=tpl, exercise=exercise, order=i
-                        )
+            _save_exercise_targets(tpl, exercise_ids, request)
             messages.success(request, f"Template '{name}' created!")
             return redirect("tracker:template_list")
-    exercises = Exercise.objects.filter(
-        user__in=[request.user, None]
-    ).order_by("name")
-    return render(request, "tracker/template_form.html", {"exercises": exercises})
+    exercise_data = _build_exercise_data(request.user)
+    return render(request, "tracker/template_form.html", {
+        "exercise_data": exercise_data,
+        "wu": "lbs",
+    })
+
+
+@login_required
+def template_edit(request, pk):
+    tpl = get_object_or_404(WorkoutTemplate, pk=pk, user=request.user)
+    if request.method == "POST":
+        tpl.name = request.POST.get("name", tpl.name)
+        tpl.description = request.POST.get("description", "")
+        tpl.save()
+        tpl.exercises.all().delete()
+        exercise_ids = request.POST.getlist("exercises")
+        _save_exercise_targets(tpl, exercise_ids, request)
+        messages.success(request, f"Template '{tpl.name}' updated!")
+        return redirect("tracker:template_detail", pk=tpl.pk)
+    existing_exercises = list(tpl.exercises.select_related("exercise").all())
+    exercise_data = _build_exercise_data(request.user, existing_exercises)
+    return render(request, "tracker/template_form.html", {
+        "exercise_data": exercise_data,
+        "template_name": tpl.name,
+        "template_description": tpl.description,
+        "editing": True,
+        "wu": "lbs",
+    })
 
 
 @login_required
@@ -333,10 +506,14 @@ def template_delete(request, pk):
 @login_required
 def template_start_workout(request, pk):
     tpl = get_object_or_404(WorkoutTemplate, pk=pk, user=request.user)
-    workout = Workout.objects.create(user=request.user, date=date.today(), template=tpl)
+    workout_date = request.GET.get("date") or date.today()
+    workout = Workout.objects.create(user=request.user, date=workout_date, template=tpl)
     for te in tpl.exercises.select_related("exercise").all():
         WorkoutExercise.objects.create(
-            workout=workout, exercise=te.exercise, order=te.order
+            workout=workout, exercise=te.exercise, order=te.order,
+            target_sets=te.target_sets,
+            target_reps_min=te.target_reps_min,
+            target_reps_max=te.target_reps_max,
         )
     return redirect("tracker:workout_detail", pk=workout.pk)
 
@@ -354,15 +531,16 @@ def workout_add(request):
     templates = WorkoutTemplate.objects.filter(user=request.user).order_by("name")
     if request.method == "POST":
         template_id = request.POST.get("template")
+        workout_date = request.POST.get("date", date.today())
         if template_id:
-            return redirect("tracker:template_start_workout", pk=template_id)
+            return redirect(f"{reverse('tracker:template_start_workout', kwargs={'pk': template_id})}?date={workout_date}")
         else:
-            workout = Workout.objects.create(user=request.user, date=request.POST.get("date", date.today()))
+            workout = Workout.objects.create(user=request.user, date=workout_date)
             return redirect("tracker:workout_detail", pk=workout.pk)
+    today_str = date.today().isoformat()
     return render(request, "tracker/workout_form.html", {
         "templates": templates,
-        "today": date.today(),
-        "max_date": date.today(),
+        "today": today_str,
     })
 
 
@@ -373,12 +551,58 @@ def workout_detail(request, pk):
     all_exercises = Exercise.objects.filter(
         user__in=[request.user, None]
     ).order_by("name")
+
+    for we in exercises:
+        we.weight_suggestion = None
+        we.completed_goal = False
+
+        working_sets = [s for s in we.sets.all() if not s.is_warmup and s.reps is not None]
+        if (
+            we.target_reps_max
+            and we.target_sets
+            and len(working_sets) >= we.target_sets
+            and all(s.reps >= we.target_reps_max for s in working_sets[:we.target_sets])
+        ):
+            we.completed_goal = True
+
+        prev_we = WorkoutExercise.objects.filter(
+            exercise=we.exercise,
+            workout__user=request.user,
+        ).exclude(
+            workout=workout
+        ).select_related("workout").prefetch_related("sets").order_by(
+            "-workout__date", "-workout__created_at"
+        ).first()
+
+        if prev_we and we.target_reps_max and we.target_sets:
+            prev_working = [s for s in prev_we.sets.all() if not s.is_warmup and s.reps is not None and s.weight_kg]
+            first_set = prev_working[0] if prev_working else None
+            if first_set:
+                prev_weight = float(first_set.weight_kg)
+                increase_lbs = 5
+                increase_kg = round(increase_lbs / 2.20462, 2)
+                all_at_max = (
+                    len(prev_working) >= we.target_sets
+                    and all(s.reps >= we.target_reps_max for s in prev_working[:we.target_sets])
+                )
+                if all_at_max:
+                    suggested = prev_weight + increase_kg
+                    label_diff = f"+{increase_lbs} lbs"
+                else:
+                    suggested = prev_weight
+                    label_diff = "same"
+
+                we.weight_suggestion = {
+                    "kg": round(suggested, 2),
+                    "diff": label_diff,
+                }
+
     return render(request, "tracker/workout_detail.html", {
         "workout": workout,
         "workout_exercises": exercises,
         "all_exercises": all_exercises,
-        "wu": weight_unit,
-        "lu": length_unit,
+        "wu": weight_unit(request.user),
+        "lu": length_unit(request.user),
         "convert_weight": convert_weight,
     })
 
@@ -434,11 +658,7 @@ def set_add(request, we_pk):
         reps = request.POST.get("reps") or None
         weight = request.POST.get("weight") or None
         if weight is not None:
-            weight = float(weight)
-            if request.user.profile.units == "imperial":
-                weight = weight / 2.20462
-            weight = round(weight, 2)
-        rir = request.POST.get("rir") or None
+            weight = round(float(weight) / 2.20462, 2)
         is_warmup = request.POST.get("is_warmup") == "on"
         max_set = we.sets.aggregate(m=Max("set_number"))["m"] or 0
         Set.objects.create(
@@ -446,7 +666,6 @@ def set_add(request, we_pk):
             set_number=max_set + 1,
             reps=reps,
             weight_kg=weight,
-            rir=rir,
             is_warmup=is_warmup,
         )
     return redirect("tracker:workout_detail", pk=we.workout.pk)

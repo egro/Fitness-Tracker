@@ -89,6 +89,67 @@
 </script>
 {% endif %}
 
+{% if has_exercise_progress %}
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-bold">Exercise Progression</h2>
+        <select id="exerciseSelect" class="rounded border border-gray-300 px-3 py-1 text-sm"
+                onchange="updateExerciseChart()">
+            {% for name in exercise_names %}
+            <option value="{{ name }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <canvas id="exerciseChart" height="200"></canvas>
+</div>
+<script>
+    var exerciseData = {{ exercise_progress_json|safe }};
+    var wu = '{{ wu }}';
+    var exerciseChart = null;
+
+    function updateExerciseChart() {
+        var sel = document.getElementById('exerciseSelect');
+        var points = exerciseData[sel.value] || [];
+        var labels = points.map(function(p) { return p.date; });
+        var values = points.map(function(p) { return p.weight; });
+        var reps = points.map(function(p) { return p.reps; });
+
+        if (exerciseChart) exerciseChart.destroy();
+
+        exerciseChart = new Chart(document.getElementById('exerciseChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Weight (' + wu + ')',
+                    data: values,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(ctx) {
+                                return 'Reps: ' + reps[ctx.dataIndex];
+                            }
+                        }
+                    }
+                },
+                scales: { y: { beginAtZero: false } }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', updateExerciseChart);
+</script>
+{% endif %}
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="bg-white rounded-xl shadow p-4">
         <div class="flex justify-between items-center mb-2">

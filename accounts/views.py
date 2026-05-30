@@ -1,8 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
+from django.contrib import messages
 from .forms import RegisterForm, ProfileForm
+from .models import NavItem
 
 
 class CustomLoginView(LoginView):
@@ -27,7 +29,50 @@ def profile(request):
         form = ProfileForm(request.POST, instance=request.user.profile)
         if form.is_valid():
             form.save()
+            messages.success(request, "Settings saved!")
             return redirect("tracker:dashboard")
     else:
         form = ProfileForm(instance=request.user.profile)
     return render(request, "accounts/profile.html", {"form": form})
+
+
+@login_required
+def nav_items(request):
+    items = NavItem.objects.filter(user=request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        item_id = request.POST.get("item_id")
+
+        if action == "toggle" and item_id:
+            item = get_object_or_404(NavItem, pk=item_id, user=request.user)
+            if not item.is_system:
+                item.is_visible = not item.is_visible
+                item.save()
+                messages.success(request, f"'{item.label}' {'shown' if item.is_visible else 'hidden'}")
+
+        elif action == "move_up" and item_id:
+            item = get_object_or_404(NavItem, pk=item_id, user=request.user)
+            prev = NavItem.objects.filter(user=request.user, order__lt=item.order).order_by("-order").first()
+            if prev:
+                prev.order, item.order = item.order, prev.order
+                prev.save()
+                item.save()
+
+        elif action == "move_down" and item_id:
+            item = get_object_or_404(NavItem, pk=item_id, user=request.user)
+            next_item = NavItem.objects.filter(user=request.user, order__gt=item.order).order_by("order").first()
+            if next_item:
+                next_item.order, item.order = item.order, next_item.order
+                next_item.save()
+                item.save()
+
+        elif action == "reset":
+            request.user.nav_items.all().delete()
+            from .models import create_default_nav_items
+            create_default_nav_items(request.user)
+            messages.success(request, "Navigation reset to defaults!")
+
+        return redirect("accounts:nav_items")
+
+    return render(request, "accounts/nav_items.html", {"items": items})

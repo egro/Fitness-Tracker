@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Muscle Library{% endblock %}
+{% block content %}
+
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Muscle Library</h1>
+    <div class="flex gap-2">
+        <a href="{% url 'tracker:exercise_list' %}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Exercises</a>
+        <a href="{% url 'tracker:category_list' %}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Categories</a>
+        <a href="{% url 'tracker:exercise_add' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Add</a>
+    </div>
+</div>
+
+<div class="space-y-4">
+    {% for cat in categories %}
+    <div class="bg-white rounded-xl shadow">
+        <div class="px-4 py-2 bg-gray-100 font-bold rounded-t-xl">{{ cat.name }}</div>
+        <ul class="divide-y">
+            {% for exercise in cat.cat_exercises %}
+            <li class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
+                <span>{{ exercise.name }}</span>
+                {% if exercise.user == user %}
+                <div class="flex gap-2">
+                    <a href="{% url 'tracker:exercise_edit' exercise.pk %}" class="text-yellow-600 hover:underline text-xs">Edit</a>
+                    <a href="{% url 'tracker:exercise_delete' exercise.pk %}" class="text-red-500 hover:underline text-xs"
+                       onclick="return confirm('Delete {{ exercise.name }}?')">Delete</a>
+                </div>
+                {% endif %}
+            </li>
+            {% empty %}
+            <li class="px-4 py-4 text-gray-400 text-sm text-center">No exercises for this muscle group.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% empty %}
+    <p class="text-gray-500">No muscle groups yet. <a href="{% url 'tracker:category_list' %}" class="text-blue-600 hover:underline">Create some</a>.</p>
+    {% endfor %}
+
+    {% if uncategorized %}
+    <div class="bg-white rounded-xl shadow">
+        <div class="px-4 py-2 bg-gray-100 font-bold rounded-t-xl">Other</div>
+        <ul class="divide-y">
+            {% for exercise in uncategorized %}
+            <li class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
+                <span>{{ exercise.name }}</span>
+                {% if exercise.user == user %}
+                <div class="flex gap-2">
+                    <a href="{% url 'tracker:exercise_edit' exercise.pk %}" class="text-yellow-600 hover:underline text-xs">Edit</a>
+                    <a href="{% url 'tracker:exercise_delete' exercise.pk %}" class="text-red-500 hover:underline text-xs"
+                       onclick="return confirm('Delete {{ exercise.name }}?')">Delete</a>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
