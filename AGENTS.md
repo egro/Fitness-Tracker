@@ -128,6 +128,12 @@ All charts use Chart.js 4.4+ and render as line graphs. Charts are in a 2-column
 - `notes` — TextField for optional notes
 - `CardioLog.objects.filter(user=request.user).order_by("-date")` for listing
 
+## Workout Detail / Weight Suggestions (`tracker/views.py` `workout_detail()`)
+- When a `WorkoutExercise` already has sets, suggestion = weight of the last non-warmup set ("from last set")
+- When no sets yet, looks up the most recent historical `WorkoutExercise` for the same exercise that **has actual sets** (skips entries where the exercise was skipped)
+- Uses the first non-warmup set from that historical workout as baseline
+- If all target sets hit `target_reps_max`, suggests +5 lbs; otherwise suggests "same" weight
+
 ## Dashboard Summary Card
 - Shows latest body fat % with method badge (colored pill: DEXA purple, caliper yellow, BOD POD blue, scale/BIA green, 3D photo indigo, manual gray)
 - Info tooltip (ℹ️) displays US Navy formula for both sexes

@@ -11,7 +11,7 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Avg, Max, Prefetch, Q
+from django.db.models import Avg, Exists, Max, OuterRef, Prefetch, Q
 
 
 def _safe_float(val, default=None):
@@ -1014,11 +1014,16 @@ def workout_detail(request, pk):
                 "diff": "from last set",
             }
         else:
+            has_sets = Set.objects.filter(workout_exercise=OuterRef("pk"))
             prev_we = WorkoutExercise.objects.filter(
                 exercise=we.exercise,
                 workout__user=request.user,
             ).exclude(
                 workout=workout
+            ).annotate(
+                has_sets=Exists(has_sets)
+            ).filter(
+                has_sets=True
             ).select_related("workout").prefetch_related("sets").order_by(
                 "-workout__date", "-workout__created_at"
             ).first()
