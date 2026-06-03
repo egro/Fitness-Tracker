@@ -324,7 +324,7 @@ def dashboard(request):
                 "borderColor": c,
                 "backgroundColor": c + "33",
                 "tension": 0.3,
-                "spanGaps": False,
+                "spanGaps": True,
             })
         exercise_labels = json.dumps(all_dates)
         exercise_json = json.dumps(exercise_datasets)
