@@ -1,6 +1,6 @@
 # Fitness Tracker
 
-Self-hosted fitness tracking app for you and a partner. Track weight, body measurements, body fat, exercises, workouts, sets, and progress photos — all with per-user accounts.
+Self-hosted fitness tracking web app supporting multiple users Track weight, body measurements, body fat, exercises, workouts, sets, and progress photos — all with per-user accounts.
 
 ## Features
 
