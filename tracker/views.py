@@ -11,7 +11,8 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Avg, Exists, Max, OuterRef, Prefetch, Q
+from django.db.models import Avg, Count, Exists, Max, OuterRef, Prefetch, Q
+from django.utils import timezone
 
 
 def _safe_float(val, default=None):
@@ -39,6 +40,21 @@ def _safe_str(val, max_len=None):
     if max_len and len(s) > max_len:
         return s[:max_len]
     return s
+
+
+def cleanup_empty_workouts(user):
+    cutoff = timezone.now() - timedelta(hours=24)
+    qs = Workout.objects.filter(
+        user=user,
+        duration_minutes__isnull=True,
+        created_at__lt=cutoff,
+    ).annotate(
+        total_sets=Count("exercises__sets"),
+    ).filter(total_sets=0)
+    deleted, _ = qs.delete()
+    return deleted
+
+
 from .models import (
     ExerciseCategory, Exercise, WeightLog, MeasurementLog, BodyFatLog,
     WorkoutTemplate, WorkoutTemplateExercise, Workout, WorkoutExercise, Set,
@@ -161,6 +177,7 @@ def _cardio_data(user, days=180):
 
 @login_required
 def dashboard(request):
+    cleanup_empty_workouts(request.user)
     recent_weight = WeightLog.objects.filter(user=request.user).order_by("-date")[:7]
     recent_measurements = MeasurementLog.objects.filter(user=request.user).order_by("-date")[:5]
     recent_workouts = Workout.objects.filter(user=request.user).order_by("-date")[:5]
@@ -944,6 +961,7 @@ def template_delete(request, pk):
 
 @login_required
 def template_start_workout(request, pk):
+    cleanup_empty_workouts(request.user)
     tpl = get_object_or_404(WorkoutTemplate, pk=pk)
     if tpl.user != request.user and not tpl.is_public:
         raise Http404()
@@ -963,6 +981,7 @@ def template_start_workout(request, pk):
 
 @login_required
 def workout_list(request):
+    cleanup_empty_workouts(request.user)
     workouts = Workout.objects.filter(user=request.user).order_by("-date", "-created_at")
     return render(request, "tracker/workout_list.html", {"workouts": workouts})
 
@@ -973,6 +992,7 @@ def workout_add(request):
         Q(user=request.user) | Q(is_public=True)
     ).order_by("name")
     if request.method == "POST":
+        cleanup_empty_workouts(request.user)
         template_id = request.POST.get("template")
         workout_date = request.POST.get("date", date.today())
         if template_id:

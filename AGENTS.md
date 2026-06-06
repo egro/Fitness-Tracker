@@ -134,7 +134,49 @@ All charts use Chart.js 4.4+ and render as line graphs. Charts are in a 2-column
 - Uses the first non-warmup set from that historical workout as baseline
 - If all target sets hit `target_reps_max`, suggests +5 lbs; otherwise suggests "same" weight
 
-## Dashboard Summary Card
+## API (`api/`)
+
+Django REST Framework API with JWT authentication. All data in metric (kg/cm/km). All endpoints require `Authorization: Bearer <token>` except register/login.
+
+### Auth
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/auth/register/` | No | Create account (username, email, password) |
+| POST | `/api/auth/login/` | No | Get JWT access + refresh tokens |
+| POST | `/api/auth/refresh/` | No | Refresh expired access token |
+| GET | `/api/auth/me/` | Yes | Current user + profile |
+| GET/PATCH | `/api/profile/` | Yes | Get/update profile settings |
+
+### CRUD Endpoints (standard list/create/retrieve/update/destroy)
+
+All paginated at 50 per page, throttled at 1000 req/hr per user.
+
+| Endpoint | Model |
+|---|---|
+| `/api/weight/` | WeightLog |
+| `/api/measurements/` | MeasurementLog |
+| `/api/bodyfat/` | BodyFatLog |
+| `/api/cardio/` | CardioLog |
+| `/api/exercises/` | Exercise |
+| `/api/categories/` | ExerciseCategory |
+| `/api/templates/` | WorkoutTemplate (nested exercises) |
+| `/api/template-exercises/` | WorkoutTemplateExercise |
+| `/api/workouts/` | Workout (nested exercises + sets) |
+| `/api/workout-exercises/` | WorkoutExercise |
+| `/api/sets/` | Set |
+| `/api/photos/` | ProgressPhoto (multipart image upload) |
+
+### Dashboard Endpoints (read-only)
+
+| Endpoint | Description |
+|---|---|
+| `/api/dashboard/summary/` | Latest weight, BMI, body fat, lean/fat mass, goal progress |
+| `/api/dashboard/charts/weight/` | Combined weight + body fat chart data (query: `?days=180`) |
+| `/api/dashboard/charts/measurements/` | All 11 measurement points (query: `?days=180`) |
+| `/api/dashboard/charts/exercises/` | Exercise weight progression (query: `?days=365`) |
+| `/api/dashboard/charts/cardio/` | Cardio activity chart data (query: `?days=180`) |
+
+### Dashboard Summary Card
 - Shows latest body fat % with method badge (colored pill: DEXA purple, caliper yellow, BOD POD blue, scale/BIA green, 3D photo indigo, manual gray)
 - Info tooltip (ℹ️) displays US Navy formula for both sexes
 - If Navy calc differs from latest entry, shows "Navy calc: X%" in lighter text below

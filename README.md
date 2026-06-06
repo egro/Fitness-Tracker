@@ -28,8 +28,9 @@ Self-hosted fitness tracking web app supporting multiple users Track weight, bod
 ## Tech Stack
 
 | Layer | Choice |
-|---|---|
+|---|---|---|
 | Backend | Python / Django 6 |
+| API | Django REST Framework + JWT (simplejwt) |
 | Frontend | Django templates + Tailwind CSS (CDN) |
 | Dynamic UI | HTMX (CDN) |
 | Charts | Chart.js (CDN) |
@@ -67,6 +68,10 @@ fitness-tracker/
 │   ├── models.py      # Profile model, NavItem model, default nav seeding
 │   ├── views.py       # Register, login, profile, nav_items views
 │   └── templates/accounts/
+├── api/               # REST API
+│   ├── serializers.py # DRF serializers for all models
+│   ├── views.py       # Viewsets, auth views, dashboard chart endpoints
+│   └── urls.py        # Router + URL patterns
 ├── tracker/           # Core tracking app
 │   ├── models.py      # Exercise, WorkoutTemplate, Workout, Set, etc.
 │   ├── views.py       # All CRUD views + export + chart data
@@ -117,6 +122,51 @@ fitness-tracker/
 | `/photos/upload/` | Upload photos |
 | `/export/` | CSV export & import |
 | `/admin/` | Django admin (staff only) |
+| `/api/` | REST API (see API section) |
+
+## REST API
+
+The app includes a full REST API powered by Django REST Framework with JWT authentication. All data is in metric units (kg/cm/km). The API is designed for mobile app consumption.
+
+### Authentication
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register/` | Create account |
+| POST | `/api/auth/login/` | Get JWT access + refresh tokens |
+| POST | `/api/auth/refresh/` | Refresh expired access token |
+| GET | `/api/auth/me/` | Current user + profile |
+
+All subsequent requests use `Authorization: Bearer <access_token>`.
+
+### CRUD Endpoints
+
+Standard list/create/retrieve/update/destroy for all models. Paginated at 50 per page, throttled at 1000 req/hr.
+
+| Endpoint | Description |
+|---|---|
+| `/api/weight/` | Weight logs |
+| `/api/measurements/` | Body measurements (11 points) |
+| `/api/bodyfat/` | Body fat log |
+| `/api/cardio/` | Cardio activity log |
+| `/api/exercises/` | Exercise library |
+| `/api/categories/` | Exercise categories/muscle groups |
+| `/api/templates/` | Workout templates (with nested exercises) |
+| `/api/template-exercises/` | Template exercise entries |
+| `/api/workouts/` | Workouts (with nested exercises + sets) |
+| `/api/workout-exercises/` | Workout exercise entries |
+| `/api/sets/` | Set entries (reps, weight, warmup flag) |
+| `/api/photos/` | Progress photos (multipart upload) |
+
+### Dashboard Endpoints (read-only)
+
+| Endpoint | Description |
+|---|---|
+| `/api/dashboard/summary/` | Latest weight, BMI, body fat, lean/fat mass, goal progress |
+| `/api/dashboard/charts/weight/?days=180` | Combined weight + body fat chart data |
+| `/api/dashboard/charts/measurements/?days=180` | All 11 measurement points |
+| `/api/dashboard/charts/exercises/?days=365` | Exercise weight progression |
+| `/api/dashboard/charts/cardio/?days=180` | Cardio activity chart data |
 
 ## Data Models
 
