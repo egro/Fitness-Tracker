@@ -45,3 +45,13 @@ def length_unit_tag(user):
 @register.simple_tag
 def distance_unit_tag(user):
     return du(user)
+
+
+@register.filter
+def estimate_1rm(weight_kg, reps):
+    if weight_kg is None or reps is None or reps < 1:
+        return None
+    reps = int(reps)
+    if reps == 1:
+        return round(float(weight_kg) * 2.20462, 1)
+    return round(float(weight_kg) * (1 + reps / 30) * 2.20462, 1)

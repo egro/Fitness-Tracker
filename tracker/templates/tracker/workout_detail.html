@@ -11,6 +11,8 @@
         {% endif %}
         {% if workout.duration_minutes %}
         <p class="text-sm text-gray-400">{{ workout.duration_minutes }} minutes</p>
+        {% else %}
+        <p class="text-sm text-gray-400">Elapsed: <span id="timer">0m</span></p>
         {% endif %}
     </div>
     {% if not workout.duration_minutes %}
@@ -59,27 +61,69 @@
         </div>
         {% endif %}
 
+        {% if we.notes %}
+        <div class="px-4 py-1.5 bg-gray-50 border-b border-gray-100 text-sm text-gray-600 italic">
+            {{ we.notes }}
+            <a href="#" onclick="document.getElementById('notes-form-{{ we.pk }}').classList.toggle('hidden');return false;"
+               class="text-blue-500 hover:underline text-xs ml-1">(edit)</a>
+        </div>
+        {% else %}
+        <div class="px-4 py-1 border-b border-gray-100">
+            <a href="#" onclick="document.getElementById('notes-form-{{ we.pk }}').classList.toggle('hidden');return false;"
+               class="text-xs text-gray-400 hover:text-blue-500">+ Add notes</a>
+        </div>
+        {% endif %}
+        <form id="notes-form-{{ we.pk }}" method="post" action="{% url 'tracker:workout_exercise_notes' we.pk %}" class="hidden px-4 py-2 bg-gray-50 border-b border-gray-100">
+            {% csrf_token %}
+            <div class="flex gap-2">
+                <input type="text" name="notes" value="{{ we.notes|default:'' }}" placeholder="Exercise notes..."
+                       class="flex-1 rounded border px-2 py-1 text-sm">
+                <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Save</button>
+            </div>
+        </form>
+
         {% if we.sets.all %}
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-gray-500 text-xs">
-                    <th class="px-4 py-1 text-left">Set</th>
-                    <th class="px-4 py-1 text-left">Reps</th>
-                    <th class="px-4 py-1 text-left">Weight</th>
-                    <th class="px-4 py-1"></th>
+                    <th class="px-2 py-1 text-left w-8">&#10003;</th>
+                    <th class="px-2 py-1 text-left">Set</th>
+                    <th class="px-2 py-1 text-left">Reps</th>
+                    <th class="px-2 py-1 text-left">Weight</th>
+                    <th class="px-2 py-1 text-left">1RM</th>
+                    <th class="px-2 py-1"></th>
                 </tr>
             </thead>
             <tbody class="divide-y">
                 {% for s in we.sets.all %}
-                <tr class="{% if s.is_warmup %}text-gray-400 italic{% endif %}">
-                    <td class="px-4 py-1">
+                <tr class="set-row {% if s.is_warmup %}text-gray-400 italic{% endif %} {% if s.completed %}bg-green-50{% endif %}"
+                    data-set-id="{{ s.pk }}" data-completed="{{ s.completed|yesno:'true,false' }}">
+                    <td class="px-2 py-1">
+                        <input type="checkbox" class="set-checkbox" data-set-id="{{ s.pk }}"
+                               {% if s.completed %}checked{% endif %}
+                               {% if s.is_warmup %}disabled title="Warmup"{% endif %}>
+                    </td>
+                    <td class="px-2 py-1 {% if s.completed %}line-through opacity-60{% endif %}">
                         {% if s.is_warmup %}Warmup{% else %}{{ s.set_number }}{% endif %}
                     </td>
-                    <td class="px-4 py-1">{{ s.reps|default:"-" }}</td>
-                    <td class="px-4 py-1">{{ s.weight_kg|to_lbs }} lbs</td>
-                    <td class="px-4 py-1 text-right">
+                    <td class="px-2 py-1 {% if s.completed %}line-through opacity-60{% endif %}">{{ s.reps|default:"-" }}</td>
+                    <td class="px-2 py-1 {% if s.completed %}line-through opacity-60{% endif %}">
+                        {{ s.weight_kg|to_lbs }} lbs
+                        {% if not s.is_warmup and s.is_pr_weight %}<span class="text-amber-500 text-xs font-bold" title="All-time best weight!">&#128293;</span>{% endif %}
+                    </td>
+                    <td class="px-2 py-1">
+                        {% if not s.is_warmup and s.weight_kg and s.reps %}
+                            {% with rm=s.weight_kg|estimate_1rm:s.reps %}
+                            <span class="{% if s.completed %}line-through opacity-60{% endif %}">{{ rm }} lbs</span>
+                            {% if s.is_pr_1rm %}<span class="text-amber-500 text-xs font-bold" title="All-time best estimated 1RM!">&#128293;</span>{% endif %}
+                            {% endwith %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-1 text-right">
                         <a href="{% url 'tracker:set_delete' s.pk %}" class="text-red-400 hover:text-red-600 text-xs"
-                           onclick="return confirm('Delete set?')">✕</a>
+                           onclick="return confirm('Delete set?')">&#10005;</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -114,6 +158,18 @@
                 </form>
             </details>
         </div>
+
+        <div id="rest-timer-{{ we.pk }}" class="hidden px-4 py-2 bg-indigo-50 border-t border-indigo-100 text-sm">
+            <span class="font-medium">Rest:</span>
+            <span id="rest-display-{{ we.pk }}" class="font-mono text-indigo-700 ml-1">0:00</span>
+            <div class="flex gap-1 mt-1">
+                <button onclick="startRest({{ we.pk }}, 60)" class="px-2 py-0.5 text-xs rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700">1m</button>
+                <button onclick="startRest({{ we.pk }}, 90)" class="px-2 py-0.5 text-xs rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700">1:30</button>
+                <button onclick="startRest({{ we.pk }}, 120)" class="px-2 py-0.5 text-xs rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700">2m</button>
+                <button onclick="startRest({{ we.pk }}, 180)" class="px-2 py-0.5 text-xs rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700">3m</button>
+                <button onclick="stopRest({{ we.pk }})" class="px-2 py-0.5 text-xs rounded bg-red-100 hover:bg-red-200 text-red-700">Stop</button>
+            </div>
+        </div>
     </div>
     {% empty %}
     <div class="text-center py-8 text-gray-500 bg-white rounded-xl shadow">
@@ -146,9 +202,111 @@
     </details>
 </div>
 
+{% if workout.started_at and not workout.duration_minutes %}
+<script>
+(function() {
+    var start = new Date("{{ workout.started_at|date:'c' }}");
+    function tick() {
+        var elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+        var h = Math.floor(elapsed / 3600);
+        var m = Math.floor((elapsed % 3600) / 60);
+        var s = elapsed % 60;
+        var text = h > 0 ? h + "h " + m + "m" : m > 0 ? m + "m " + s + "s" : s + "s";
+        document.getElementById("timer").textContent = text;
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
+    var csrfToken = '{{ csrf_token }}';
+    var restTimers = {};
+    var restIntervals = {};
+
+    function startRest(wePk, seconds) {
+        var container = document.getElementById('rest-timer-' + wePk);
+        var display = document.getElementById('rest-display-' + wePk);
+        container.classList.remove('hidden');
+        if (restIntervals[wePk]) clearInterval(restIntervals[wePk]);
+        restTimers[wePk] = seconds;
+        updateRestDisplay(wePk);
+        restIntervals[wePk] = setInterval(function() {
+            restTimers[wePk]--;
+            if (restTimers[wePk] <= 0) {
+                clearInterval(restIntervals[wePk]);
+                restIntervals[wePk] = null;
+                display.textContent = 'Done!';
+                container.classList.add('bg-green-50');
+                container.classList.remove('bg-indigo-50');
+                try {
+                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    gain.gain.value = 0.3;
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                } catch(e) {}
+                return;
+            }
+            updateRestDisplay(wePk);
+        }, 1000);
+    }
+
+    function updateRestDisplay(wePk) {
+        var display = document.getElementById('rest-display-' + wePk);
+        var s = restTimers[wePk];
+        var m = Math.floor(s / 60);
+        var sec = s % 60;
+        display.textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    function stopRest(wePk) {
+        if (restIntervals[wePk]) clearInterval(restIntervals[wePk]);
+        restIntervals[wePk] = null;
+        var container = document.getElementById('rest-timer-' + wePk);
+        var display = document.getElementById('rest-display-' + wePk);
+        display.textContent = '0:00';
+        container.classList.add('hidden');
+        container.classList.remove('bg-green-50');
+        container.classList.add('bg-indigo-50');
+    }
+
+    document.querySelectorAll('.set-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var setId = this.getAttribute('data-set-id');
+            var row = this.closest('tr');
+            var isChecked = this.checked;
+
+            fetch('/tracker/set/' + setId + '/toggle/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: ''
+            }).then(function(resp) { return resp.json(); }).then(function(data) {
+                if (data.completed) {
+                    row.classList.add('bg-green-50');
+                    row.querySelectorAll('td:not(:first-child)').forEach(function(td) {
+                        td.classList.add('line-through', 'opacity-60');
+                    });
+                    if (!isChecked) cb.checked = true;
+                    var wePk = row.closest('[data-exercise-id]').getAttribute('data-exercise-id');
+                    startRest(wePk, 90);
+                } else {
+                    row.classList.remove('bg-green-50');
+                    row.querySelectorAll('td:not(:first-child)').forEach(function(td) {
+                        td.classList.remove('line-through', 'opacity-60');
+                    });
+                    if (isChecked) cb.checked = false;
+                }
+            });
+        });
+    });
+
     new Sortable(document.getElementById('exercise-list'), {
         handle: '.drag-handle',
         animation: 150,
@@ -163,7 +321,7 @@
             });
             fetch('{% url "tracker:workout_reorder" workout.pk %}', {
                 method: 'POST',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                headers: { 'X-CSRFToken': csrfToken },
                 body: form
             });
         }

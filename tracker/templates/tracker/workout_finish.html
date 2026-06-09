@@ -8,7 +8,10 @@
     {% csrf_token %}
     <label class="block mb-3">
         <span class="text-gray-700">Duration (minutes)</span>
-        <input type="number" name="duration" step="1" class="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
+        <input type="number" name="duration" step="1"
+               class="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
+               {% if default_duration %}value="{{ default_duration }}"{% endif %}>
+        {% if default_duration %}<p class="text-xs text-gray-400 mt-1">Auto-calculated from start time — adjust if needed</p>{% endif %}
     </label>
     <label class="block mb-4">
         <span class="text-gray-700">Notes</span>

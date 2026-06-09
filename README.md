@@ -16,7 +16,13 @@ Self-hosted fitness tracking web app supporting multiple users Track weight, bod
 - **Exercise library** — flat list sorted by name, shows muscle group tags; separate **Muscle Library** grouped by muscle group
 - **Categories** — add, rename, and delete muscle groups/categories
 - **Workout templates** — reusable routines with target sets, min/max reps, and target weight per exercise; create, view, edit, and delete
-- **Workout logging** — start from a template or blank, add exercises, log sets (reps/weight) with auto-converting kg/lbs inputs and auto-suggested weight based on progressive overload
+- **Workout logging** — start from a template or blank, add exercises, log sets (reps/weight) with auto-converting kg/lbs inputs and auto-suggested weight based on progressive overload; live elapsed timer on the workout page, duration auto-populated on finish
+- **Set completion** — check off sets as you complete them; checked sets show green highlight with strikethrough; automatically starts a rest timer
+- **Rest timer** — when a set is marked complete, a countdown timer appears with preset buttons (1m, 1:30, 2m, 3m); plays an audio beep when done
+- **1RM estimation** — each working set shows estimated one-rep max using Epley formula (`weight × (1 + reps/30)`)
+- **Personal Records** — 🔥 badges highlight sets that match or beat your all-time best for weight, estimated 1RM, or volume per exercise
+- **Workout volume chart** — dashboard bar chart showing total volume (weight × reps) per workout over 180 days
+- **Exercise notes** — add notes to individual exercises within a workout (inline editable)
 - **Progressive overload** — tracks whether all sets hit max reps; auto-suggests next weight (+5 lbs if goal met, same weight if not) pre-filled into the Add Set form
 - **Customizable navigation** — reorder and toggle which items appear as header quick links; full item list always available in hamburger menu
 - **Progress photos** — upload multiple at once, gallery view
@@ -179,9 +185,9 @@ Standard list/create/retrieve/update/destroy for all models. Paginated at 50 per
 - **Exercise** — name, categories (M2M — multiple muscle groups), user or global
 - **WorkoutTemplate** — reusable routine with ordered exercises
 - **WorkoutTemplateExercise** — exercise + order + targets (sets, min/max reps, weight)
-- **Workout** — date, optional template reference, duration, notes
-- **WorkoutExercise** — exercise logged in a specific workout, with copied target fields
-- **Set** — reps, weight in kg, warmup flag
+- **Workout** — date, started_at (auto-set on start), optional template reference, duration (auto-populated on finish), notes
+- **WorkoutExercise** — exercise logged in a specific workout, with notes and copied target fields
+- **Set** — reps, weight in kg, warmup flag, completed flag (toggle via checkbox)
 - **CardioLog** — date, activity name, duration (minutes), distance (km), notes
 - **ProgressPhoto** — image file, date, body part label, notes
 

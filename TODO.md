@@ -1,4 +1,3 @@
-# TODO
 
 ## Data Import
 - [ ] Import workout data from Golden Cheetah

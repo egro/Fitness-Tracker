@@ -68,6 +68,12 @@ urlpatterns = [
         name="set_add",
     ),
     path("set/<int:pk>/delete/", views.set_delete, name="set_delete"),
+    path("set/<int:pk>/toggle/", views.set_toggle_complete, name="set_toggle"),
+    path(
+        "workout-exercise/<int:pk>/notes/",
+        views.workout_exercise_notes,
+        name="workout_exercise_notes",
+    ),
     # Export / Import
     path("export/", views.export_data, name="import_export"),
     path("export/all/", views.export_all, name="export_all"),

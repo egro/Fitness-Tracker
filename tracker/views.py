@@ -175,6 +175,67 @@ def _cardio_data(user, days=180):
     return labels_json, datasets_json, True
 
 
+def _compute_pr_data(user, exercises):
+    exercise_ids = [we.exercise_id for we in exercises]
+    if not exercise_ids:
+        return {}
+    workout_id = exercises[0].workout_id if exercises else None
+    pr_map = {}
+    for eid in exercise_ids:
+        hist_sets = Set.objects.filter(
+            workout_exercise__exercise_id=eid,
+            workout_exercise__workout__user=user,
+            is_warmup=False,
+            weight_kg__isnull=False,
+            reps__isnull=False,
+        ).exclude(
+            workout_exercise__workout__id=workout_id,
+        ).values_list("weight_kg", "reps")
+        best_weight = 0
+        best_1rm = 0
+        best_volume = 0
+        for weight_kg, reps in hist_sets:
+            w = float(weight_kg)
+            r = int(reps)
+            if r < 1:
+                continue
+            vol = w * r
+            rm = w if r == 1 else w * (1 + r / 30)
+            if w > best_weight:
+                best_weight = w
+            if rm > best_1rm:
+                best_1rm = rm
+            if vol > best_volume:
+                best_volume = vol
+        pr_map[eid] = {
+            "best_weight_kg": best_weight,
+            "best_1rm_kg": best_1rm,
+            "best_volume_kg_reps": best_volume,
+        }
+    return pr_map
+
+
+def _volume_data(user, days=180):
+    cutoff = date.today() - timedelta(days=days)
+    workouts = Workout.objects.filter(
+        user=user, date__gte=cutoff,
+    ).order_by("date").prefetch_related("exercises__sets")
+    vol_by_date = {}
+    for w in workouts:
+        total_vol = 0
+        for we in w.exercises.all():
+            for s in we.sets.all():
+                if not s.is_warmup and s.weight_kg and s.reps:
+                    total_vol += float(s.weight_kg) * s.reps
+        if total_vol > 0:
+            vol_by_date[str(w.date)] = round(total_vol * 2.20462, 1)
+    if not vol_by_date:
+        return "[]", "[]", False
+    dates = sorted(vol_by_date.keys())
+    values = [vol_by_date[d] for d in dates]
+    return json.dumps(dates), json.dumps(values), True
+
+
 @login_required
 def dashboard(request):
     cleanup_empty_workouts(request.user)
@@ -442,6 +503,8 @@ def dashboard(request):
     recent_cardio = CardioLog.objects.filter(user=request.user).order_by("-date")[:5]
     cardio_labels, cardio_datasets, has_cardio_data = _cardio_data(request.user, 180)
 
+    volume_data = _volume_data(request.user, 180)
+
     ctx = {
         "recent_weight": recent_weight,
         "recent_measurements": recent_measurements,
@@ -484,6 +547,9 @@ def dashboard(request):
         "bf_goal_direction": bf_goal_direction,
         "bf_goal_reached": bf_goal_reached,
         "goal_body_fat_pct": profile.goal_body_fat_pct if profile else None,
+        "volume_labels": volume_data[0],
+        "volume_values": volume_data[1],
+        "has_volume_data": volume_data[2],
     }
     return render(request, "tracker/dashboard.html", ctx)
 
@@ -966,7 +1032,7 @@ def template_start_workout(request, pk):
     if tpl.user != request.user and not tpl.is_public:
         raise Http404()
     workout_date = request.GET.get("date") or date.today()
-    workout = Workout.objects.create(user=request.user, date=workout_date, template=tpl)
+    workout = Workout.objects.create(user=request.user, date=workout_date, template=tpl, started_at=timezone.now())
     for te in tpl.exercises.select_related("exercise").all():
         WorkoutExercise.objects.create(
             workout=workout, exercise=te.exercise, order=te.order,
@@ -998,7 +1064,7 @@ def workout_add(request):
         if template_id:
             return redirect(f"{reverse('tracker:template_start_workout', kwargs={'pk': template_id})}?date={workout_date}")
         else:
-            workout = Workout.objects.create(user=request.user, date=workout_date)
+            workout = Workout.objects.create(user=request.user, date=workout_date, started_at=timezone.now())
             return redirect("tracker:workout_detail", pk=workout.pk)
     return render(request, "tracker/workout_form.html", {
         "templates": templates,
@@ -1071,6 +1137,26 @@ def workout_detail(request, pk):
                         "diff": label_diff,
                     }
 
+    pr_data = _compute_pr_data(request.user, exercises)
+    for we in exercises:
+        pr = pr_data.get(we.exercise_id)
+        if pr and pr["best_weight_kg"] > 0:
+            for s in we.sets.all():
+                s.is_pr_weight = False
+                s.is_pr_1rm = False
+                s.is_pr_volume = False
+                if s.is_warmup or not s.weight_kg or not s.reps:
+                    continue
+                w = float(s.weight_kg)
+                r = int(s.reps)
+                vol = w * r
+                rm = w * (1 + r / 30) if r > 1 else w
+                if w >= pr["best_weight_kg"] - 0.01:
+                    s.is_pr_weight = True
+                if rm >= pr["best_1rm_kg"] - 0.01:
+                    s.is_pr_1rm = True
+                if vol >= pr["best_volume_kg_reps"] - 0.01:
+                    s.is_pr_volume = True
     return render(request, "tracker/workout_detail.html", {
         "workout": workout,
         "workout_exercises": exercises,
@@ -1078,6 +1164,7 @@ def workout_detail(request, pk):
         "wu": weight_unit(request.user),
         "lu": length_unit(request.user),
         "convert_weight": convert_weight,
+        "pr_data": pr_data,
     })
 
 
@@ -1122,11 +1209,24 @@ def workout_finish(request, pk):
     workout = get_object_or_404(Workout, pk=pk, user=request.user)
     if request.method == "POST":
         workout.notes = _safe_str(request.POST.get("notes", ""))
-        workout.duration_minutes = _safe_int(request.POST.get("duration"))
+        duration_raw = request.POST.get("duration", "").strip()
+        if duration_raw:
+            workout.duration_minutes = _safe_int(duration_raw)
+        elif workout.started_at:
+            elapsed = int((timezone.now() - workout.started_at).total_seconds() / 60)
+            workout.duration_minutes = max(elapsed, 1)
+        workout.end_time = timezone.now().time()
         workout.save()
         messages.success(request, "Workout saved!")
         return redirect("tracker:workout_detail", pk=workout.pk)
-    return render(request, "tracker/workout_finish.html", {"workout": workout})
+    default_duration = None
+    if workout.started_at:
+        elapsed = int((timezone.now() - workout.started_at).total_seconds() / 60)
+        default_duration = max(elapsed, 1)
+    return render(request, "tracker/workout_finish.html", {
+        "workout": workout,
+        "default_duration": default_duration,
+    })
 
 
 @login_required
@@ -1164,6 +1264,25 @@ def set_delete(request, pk):
     workout_pk = s.workout_exercise.workout.pk
     s.delete()
     return redirect("tracker:workout_detail", pk=workout_pk)
+
+
+@login_required
+def set_toggle_complete(request, pk):
+    if request.method != "POST":
+        return HttpResponseBadRequest()
+    s = get_object_or_404(Set, pk=pk, workout_exercise__workout__user=request.user)
+    s.completed = not s.completed
+    s.save()
+    return JsonResponse({"completed": s.completed})
+
+
+@login_required
+def workout_exercise_notes(request, pk):
+    we = get_object_or_404(WorkoutExercise, pk=pk, workout__user=request.user)
+    if request.method == "POST":
+        we.notes = _safe_str(request.POST.get("notes", ""))
+        we.save()
+    return redirect("tracker:workout_detail", pk=we.workout.pk)
 
 
 # ── Export ──────────────────────────────────────────────────────

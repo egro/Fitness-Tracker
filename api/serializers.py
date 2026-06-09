@@ -123,7 +123,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
 class SetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Set
-        fields = ["id", "set_number", "reps", "weight_kg", "is_warmup"]
+        fields = ["id", "set_number", "reps", "weight_kg", "is_warmup", "completed"]
         read_only_fields = ["id"]
 
 
@@ -148,7 +148,7 @@ class WorkoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workout
         fields = [
-            "id", "date", "start_time", "end_time", "duration_minutes",
+            "id", "date", "started_at", "start_time", "end_time", "duration_minutes",
             "notes", "template", "template_name", "exercises", "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -161,7 +161,7 @@ class WorkoutListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workout
         fields = [
-            "id", "date", "start_time", "end_time", "duration_minutes",
+            "id", "date", "started_at", "start_time", "end_time", "duration_minutes",
             "notes", "template", "template_name", "exercise_count", "created_at",
         ]
         read_only_fields = ["id", "created_at"]
