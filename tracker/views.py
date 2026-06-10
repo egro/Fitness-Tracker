@@ -39,6 +39,18 @@ def _safe_str(val, max_len=None):
     if max_len and len(s) > max_len:
         return s[:max_len]
     return s
+
+
+def _moving_average(values, window=30, min_points=3):
+    result = [None] * len(values)
+    for i in range(len(values)):
+        start = max(0, i - window + 1)
+        window_vals = [v for v in values[start:i+1] if v is not None]
+        if len(window_vals) >= min_points:
+            result[i] = round(sum(window_vals) / len(window_vals), 1)
+    return result
+
+
 from .models import (
     ExerciseCategory, Exercise, WeightLog, MeasurementLog, BodyFatLog,
     WorkoutTemplate, WorkoutTemplateExercise, Workout, WorkoutExercise, Set,
@@ -112,6 +124,20 @@ def _measurement_data(user, days=180):
             "spanGaps": False,
         })
 
+    trend_datasets = []
+    for ds in datasets:
+        trend_datasets.append({
+            "label": "Trend: " + ds["label"],
+            "data": _moving_average(ds["data"], 30),
+            "borderColor": "#f97316",
+            "borderDash": [4, 4],
+            "borderWidth": 2,
+            "pointRadius": 0,
+            "fill": False,
+            "spanGaps": True,
+        })
+    datasets.extend(trend_datasets)
+
     return json.dumps(labels) if has_data else "[]", json.dumps(datasets) if has_data else "[]", has_data
 
 
@@ -153,6 +179,20 @@ def _cardio_data(user, days=180):
             "tension": 0.3,
             "spanGaps": False,
         })
+
+    trend_datasets = []
+    for ds in datasets:
+        trend_datasets.append({
+            "label": "Trend: " + ds["label"],
+            "data": _moving_average(ds["data"], 30),
+            "borderColor": "#f97316",
+            "borderDash": [4, 4],
+            "borderWidth": 2,
+            "pointRadius": 0,
+            "fill": False,
+            "spanGaps": True,
+        })
+    datasets.extend(trend_datasets)
 
     labels_json = json.dumps(all_dates)
     datasets_json = json.dumps(datasets)
@@ -326,6 +366,19 @@ def dashboard(request):
                 "tension": 0.3,
                 "spanGaps": True,
             })
+        trend_datasets = []
+        for ds in exercise_datasets:
+            trend_datasets.append({
+                "label": "Trend: " + ds["label"],
+                "data": _moving_average(ds["data"], 30),
+                "borderColor": "#f97316",
+                "borderDash": [4, 4],
+                "borderWidth": 2,
+                "pointRadius": 0,
+                "fill": False,
+                "spanGaps": True,
+            })
+        exercise_datasets.extend(trend_datasets)
         exercise_labels = json.dumps(all_dates)
         exercise_json = json.dumps(exercise_datasets)
     else:
@@ -422,6 +475,9 @@ def dashboard(request):
             bf_radii = json.dumps(merged_radii)
             bf_method_labels = json.dumps(merged_methods)
 
+    weight_trend = _moving_average(weight_values, 30)
+    has_weight_trend = any(v is not None for v in weight_trend) if weight_values else False
+
     recent_cardio = CardioLog.objects.filter(user=request.user).order_by("-date")[:5]
     cardio_labels, cardio_datasets, has_cardio_data = _cardio_data(request.user, 180)
 
@@ -438,6 +494,8 @@ def dashboard(request):
         "lean_mass_display": lean_mass_display,
         "weight_labels": json.dumps(weight_labels) if has_weight_data else "[]",
         "weight_values": json.dumps(weight_values) if has_weight_data else "[]",
+        "weight_trend": json.dumps(weight_trend) if has_weight_data else "[]",
+        "has_weight_trend": has_weight_trend if has_weight_data else False,
         "has_weight_data": has_weight_data,
         "last_weight": last_weight,
         "weight_change": weight_change,

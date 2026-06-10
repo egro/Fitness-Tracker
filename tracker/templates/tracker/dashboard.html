@@ -113,7 +113,17 @@
                 fill: true,
                 spanGaps: true,
                 yAxisID: 'y',
-            }{% if has_bf_data %}, {
+            }{% if has_weight_trend %}, {
+                label: 'Trend (30-day avg)',
+                data: {{ weight_trend|safe }},
+                borderColor: '#f97316',
+                borderDash: [4, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                spanGaps: true,
+                yAxisID: 'y',
+            }{% endif %}{% if has_bf_data %}, {
                 label: 'Body Fat %',
                 data: {{ bf_values|safe }},
                 borderColor: '#ef4444',

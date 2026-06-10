@@ -99,6 +99,15 @@ All charts use Chart.js 4.4+ and render as line graphs. Charts are in a 2-column
 - Source: `CardioLog` entries grouped by activity name
 - Colors auto-assigned from the same 15-color palette
 
+### 30-Day Moving Average Trend Lines
+- Every chart dataset gets a corresponding orange (`#f97316`) dashed trend line labeled "Trend: {dataset name}"
+- Trend lines use `spanGaps: true` (continuous across gaps) and have `pointRadius: 0`
+- Computed server-side in `_moving_average(values, window=30, min_points=3)` at `tracker/views.py:44`
+- At least 3 non-`None` data points in the 30-day window before the trend line appears
+- For the weight chart, the trend is computed after the BF-merge (aligned date axis) and passed as `weight_trend` / `has_weight_trend` to the template
+- For measurements, exercise, and cardio charts, trend datasets are appended to the dataset list server-side before JSON serialization
+- Trend lines skip `None` values in the averaging window so gaps don't pull the average toward zero
+
 ## URLs
 - `/` — Dashboard
 - `/accounts/` — Auth

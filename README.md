@@ -1,11 +1,11 @@
-# Fitness Tracker
+kf# Fitness Tracker
 
 Self-hosted fitness tracking web app supporting multiple users Track weight, body measurements, body fat, exercises, workouts, sets, and progress photos — all with per-user accounts.
 
 ## Features
 
 - **Multi-user** with data isolation (each user sees only their own data; admin sees all)
-- **Dashboard** — latest weight, BMI, body fat % (US Navy formula + direct entry), goal progress, combined weight & body fat trend chart, measurements chart, multi-exercise weight progression chart, cardio activity chart; all charts are clickable to expand fullscreen
+- **Dashboard** — latest weight, BMI, body fat % (US Navy formula + direct entry), goal progress, combined weight & body fat trend chart, measurements chart, multi-exercise weight progression chart, cardio activity chart; all charts include a 30-day moving average trend line; all charts are clickable to expand fullscreen
 - **Themes** — light, dark, and auto mode, toggled in settings; dark mode uses CSS overrides for all common Tailwind utilities
 - **Nav bar customization** — 8 preset accent colors (blue, slate, emerald, violet, amber, rose, cyan, stone) pickable in settings
 - **Unit system** — switch between imperial (lbs/in/mi) and metric (kg/cm/km) in settings; all inputs and displays adapt
