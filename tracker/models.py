@@ -179,9 +179,6 @@ class BodyFatLog(models.Model):
     def __str__(self):
         return f"BodyFatLog {self.date}: {self.body_fat_pct}% ({self.get_method_display()})"
 
-    class Meta:
-        ordering = ["-date", "-created_at"]
-
 
 class CardioLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cardio_logs")

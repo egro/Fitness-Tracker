@@ -42,7 +42,6 @@ def _safe_str(val, max_len=None):
     return s
 
 
-<<<<<<< HEAD
 def _moving_average(values, window=30, min_points=3):
     result = [None] * len(values)
     for i in range(len(values)):
@@ -51,7 +50,8 @@ def _moving_average(values, window=30, min_points=3):
         if len(window_vals) >= min_points:
             result[i] = round(sum(window_vals) / len(window_vals), 1)
     return result
-=======
+
+
 def cleanup_empty_workouts(user):
     cutoff = timezone.now() - timedelta(hours=24)
     qs = Workout.objects.filter(
@@ -63,7 +63,6 @@ def cleanup_empty_workouts(user):
     ).filter(total_sets=0)
     deleted, _ = qs.delete()
     return deleted
->>>>>>> aad36bfa7645d7d4012238ce78f520d28c9a0eb7
 
 
 from .models import (
