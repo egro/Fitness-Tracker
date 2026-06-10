@@ -8,6 +8,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("", include("tracker.urls")),
     path("photos/", include("photos.urls")),
+    path("api/", include("api.urls")),
 ]
 
 if settings.DEBUG:

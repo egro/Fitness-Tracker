@@ -25,7 +25,7 @@
                    class="rounded border border-gray-300 px-2 py-1 flex-1">
             <button type="submit" class="text-blue-600 hover:underline text-sm">Rename</button>
         </form>
-        <form method="post" class="ml-2" onsubmit="return confirm('Delete category &#39;{{ cat.name }}&#39;?')">
+        <form method="post" class="ml-2" onsubmit="return confirm('Delete category &#39;{{ cat.name|escapejs }}&#39;?')">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="pk" value="{{ cat.pk }}">

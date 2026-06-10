@@ -289,6 +289,47 @@
     });
 </script>
 {% endif %}
+
+{% if has_volume_data %}
+<div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
+    <div class="flex justify-between items-start">
+        <h2 class="text-lg font-bold mb-2">Workout Volume</h2>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+    </div>
+    <p class="text-xs text-gray-400 mb-2">Total weight lifted per session (sets &times; reps &times; weight)</p>
+    <canvas id="volumeChart" height="200"></canvas>
+</div>
+<script>
+    new Chart(document.getElementById('volumeChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ volume_labels|safe }},
+            datasets: [{
+                label: 'Volume ({% weight_unit_tag user %})',
+                data: {{ volume_values|safe }},
+                backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                borderColor: '#6366f1',
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.parsed.y.toLocaleString() + ' {% weight_unit_tag user %}';
+                        }
+                    }
+                }
+            },
+            scales: { y: { beginAtZero: true, title: { display: true, text: '{% weight_unit_tag user %}' } } }
+        }
+    });
+</script>
+{% endif %}
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

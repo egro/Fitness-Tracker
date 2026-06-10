@@ -103,6 +103,7 @@ class WorkoutTemplateExercise(models.Model):
 class Workout(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="workouts")
     date = models.DateField()
+    started_at = models.DateTimeField(null=True, blank=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
@@ -145,6 +146,7 @@ class Set(models.Model):
     reps = models.PositiveIntegerField(null=True, blank=True)
     weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     is_warmup = models.BooleanField(default=False)
+    completed = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["set_number"]
