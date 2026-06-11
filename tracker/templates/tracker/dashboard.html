@@ -95,12 +95,12 @@
 <div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
     <div class="flex justify-between items-start">
         <h2 class="text-lg font-bold mb-2">Weight &amp; Body Fat</h2>
-        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();closeChart(this.parentElement.parentElement)">&times;</button>
     </div>
     <canvas id="weightChart" height="200"></canvas>
 </div>
 <script>
-    new Chart(document.getElementById('weightChart'), {
+    window._weightChart = new Chart(document.getElementById('weightChart'), {
         type: 'line',
         data: {
             labels: {{ weight_labels|safe }},
@@ -113,10 +113,20 @@
                 fill: true,
                 spanGaps: true,
                 yAxisID: 'y',
-            }{% if has_weight_trend %}, {
+            }{% if has_weight_trend_30 %}, {
                 label: 'Trend (30-day avg)',
-                data: {{ weight_trend|safe }},
-                borderColor: '#f97316',
+                data: {{ weight_trend_30|safe }},
+                borderColor: '#2563eb',
+                borderDash: [4, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                spanGaps: true,
+                yAxisID: 'y',
+            }{% endif %}{% if has_weight_trend_90 %}, {
+                label: 'Trend (90-day avg)',
+                data: {{ weight_trend_90|safe }},
+                borderColor: '#2563eb',
                 borderDash: [4, 4],
                 borderWidth: 2,
                 pointRadius: 0,
@@ -143,13 +153,33 @@
                 borderWidth: 2,
                 fill: false,
                 yAxisID: 'y1',
+            }{% endif %}{% if has_bf_trend_30 %}, {
+                label: 'BF Trend (30-day avg)',
+                data: {{ bf_trend_30|safe }},
+                borderColor: '#ef4444',
+                borderDash: [4, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                spanGaps: true,
+                yAxisID: 'y1',
+            }{% endif %}{% if has_bf_trend_90 %}, {
+                label: 'BF Trend (90-day avg)',
+                data: {{ bf_trend_90|safe }},
+                borderColor: '#ef4444',
+                borderDash: [4, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                spanGaps: true,
+                yAxisID: 'y1',
             }{% endif %}{% endif %}]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function(ctx) {
@@ -181,6 +211,7 @@
             }
         }
     });
+    buildLegend(window._weightChart, window._weightChart.canvas.parentElement);
 </script>
 {% endif %}
 
@@ -188,13 +219,13 @@
 <div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
     <div class="flex justify-between items-start">
         <h2 class="text-lg font-bold mb-2">Measurements</h2>
-        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();closeChart(this.parentElement.parentElement)">&times;</button>
     </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
     <canvas id="measChart" height="200"></canvas>
 </div>
 <script>
-    new Chart(document.getElementById('measChart'), {
+    window._measChart = new Chart(document.getElementById('measChart'), {
         type: 'line',
         data: {
             labels: {{ meas_labels|safe }},
@@ -204,11 +235,12 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { display: false }
             },
             scales: { y: { beginAtZero: false } }
         }
     });
+    buildLegend(window._measChart, window._measChart.canvas.parentElement);
 </script>
 {% endif %}
 
@@ -216,7 +248,7 @@
 <div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
     <div class="flex justify-between items-start">
         <h2 class="text-lg font-bold mb-2">Exercise Progression</h2>
-        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();closeChart(this.parentElement.parentElement)">&times;</button>
     </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
     <canvas id="exerciseChart" height="200"></canvas>
@@ -226,7 +258,7 @@
     var exerciseDatasets = {{ exercise_datasets|safe }};
     var wu = '{{ wu }}';
 
-    new Chart(document.getElementById('exerciseChart'), {
+    window._exerciseChart = new Chart(document.getElementById('exerciseChart'), {
         type: 'line',
         data: {
             labels: exerciseLabels,
@@ -236,7 +268,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         afterLabel: function(ctx) {
@@ -252,6 +284,7 @@
             scales: { y: { beginAtZero: true } }
         }
     });
+    buildLegend(window._exerciseChart, window._exerciseChart.canvas.parentElement);
 </script>
 {% endif %}
 
@@ -259,13 +292,13 @@
 <div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
     <div class="flex justify-between items-start">
         <h2 class="text-lg font-bold mb-2">Cardio Activity</h2>
-        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();closeChart(this.parentElement.parentElement)">&times;</button>
     </div>
     <p class="text-xs text-gray-400 mb-2">Click a legend item to toggle it on/off.</p>
     <canvas id="cardioChart" height="200"></canvas>
 </div>
 <script>
-    new Chart(document.getElementById('cardioChart'), {
+    window._cardioChart = new Chart(document.getElementById('cardioChart'), {
         type: 'line',
         data: {
             labels: {{ cardio_labels|safe }},
@@ -275,7 +308,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function(ctx) {
@@ -287,6 +320,7 @@
             scales: { y: { beginAtZero: false, title: { display: true, text: 'Minutes' } } }
         }
     });
+    buildLegend(window._cardioChart, window._cardioChart.canvas.parentElement);
 </script>
 {% endif %}
 
@@ -294,7 +328,7 @@
 <div class="chart-card bg-white rounded-xl shadow p-4 cursor-pointer" onclick="toggleChart(this)">
     <div class="flex justify-between items-start">
         <h2 class="text-lg font-bold mb-2">Workout Volume</h2>
-        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();toggleChart(this.parentElement.parentElement)">&times;</button>
+        <button class="close-btn hidden text-gray-400 hover:text-gray-700 text-xl leading-none" onclick="event.stopPropagation();closeChart(this.parentElement.parentElement)">&times;</button>
     </div>
     <p class="text-xs text-gray-400 mb-2">Total weight lifted per session (sets &times; reps &times; weight)</p>
     <canvas id="volumeChart" height="200"></canvas>

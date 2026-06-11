@@ -143,7 +143,7 @@ def _measurement_data(user, days=180):
         trend_datasets.append({
             "label": "Trend: " + ds["label"],
             "data": _moving_average(ds["data"], 30),
-            "borderColor": "#f97316",
+            "borderColor": ds["borderColor"],
             "borderDash": [4, 4],
             "borderWidth": 2,
             "pointRadius": 0,
@@ -199,7 +199,7 @@ def _cardio_data(user, days=180):
         trend_datasets.append({
             "label": "Trend: " + ds["label"],
             "data": _moving_average(ds["data"], 30),
-            "borderColor": "#f97316",
+            "borderColor": ds["borderColor"],
             "borderDash": [4, 4],
             "borderWidth": 2,
             "pointRadius": 0,
@@ -447,7 +447,7 @@ def dashboard(request):
             trend_datasets.append({
                 "label": "Trend: " + ds["label"],
                 "data": _moving_average(ds["data"], 30),
-                "borderColor": "#f97316",
+                "borderColor": ds["borderColor"],
                 "borderDash": [4, 4],
                 "borderWidth": 2,
                 "pointRadius": 0,
@@ -550,9 +550,25 @@ def dashboard(request):
             bf_styles = json.dumps(merged_styles)
             bf_radii = json.dumps(merged_radii)
             bf_method_labels = json.dumps(merged_methods)
+            bf_trend_30 = _moving_average(merged_bf, 30)
+            bf_trend_90 = _moving_average(merged_bf, 90)
+            has_bf_trend_30 = any(v is not None for v in bf_trend_30)
+            has_bf_trend_90 = any(v is not None for v in bf_trend_90)
+        else:
+            bf_trend_30 = []
+            bf_trend_90 = []
+            has_bf_trend_30 = False
+            has_bf_trend_90 = False
+    else:
+        bf_trend_30 = []
+        bf_trend_90 = []
+        has_bf_trend_30 = False
+        has_bf_trend_90 = False
 
-    weight_trend = _moving_average(weight_values, 30)
-    has_weight_trend = any(v is not None for v in weight_trend) if weight_values else False
+    weight_trend_30 = _moving_average(weight_values, 30)
+    weight_trend_90 = _moving_average(weight_values, 90)
+    has_weight_trend_30 = any(v is not None for v in weight_trend_30) if weight_values else False
+    has_weight_trend_90 = any(v is not None for v in weight_trend_90) if weight_values else False
 
     recent_cardio = CardioLog.objects.filter(user=request.user).order_by("-date")[:5]
     cardio_labels, cardio_datasets, has_cardio_data = _cardio_data(request.user, 180)
@@ -572,8 +588,14 @@ def dashboard(request):
         "lean_mass_display": lean_mass_display,
         "weight_labels": json.dumps(weight_labels) if has_weight_data else "[]",
         "weight_values": json.dumps(weight_values) if has_weight_data else "[]",
-        "weight_trend": json.dumps(weight_trend) if has_weight_data else "[]",
-        "has_weight_trend": has_weight_trend if has_weight_data else False,
+        "weight_trend_30": json.dumps(weight_trend_30) if has_weight_data else "[]",
+        "has_weight_trend_30": has_weight_trend_30 if has_weight_data else False,
+        "weight_trend_90": json.dumps(weight_trend_90) if has_weight_data else "[]",
+        "has_weight_trend_90": has_weight_trend_90 if has_weight_data else False,
+        "bf_trend_30": json.dumps(bf_trend_30) if has_bf_data else "[]",
+        "has_bf_trend_30": has_bf_trend_30 if has_bf_data else False,
+        "bf_trend_90": json.dumps(bf_trend_90) if has_bf_data else "[]",
+        "has_bf_trend_90": has_bf_trend_90 if has_bf_data else False,
         "has_weight_data": has_weight_data,
         "last_weight": last_weight,
         "weight_change": weight_change,

@@ -97,6 +97,39 @@
         </div>
     </nav>
 
+    <script>
+        function buildLegend(chart, container) {
+            var el = document.createElement('div');
+            el.className = 'flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 text-xs';
+            chart.data.datasets.forEach(function(ds, i) {
+                if (ds.label.indexOf('Trend') === 0) return;
+                var btn = document.createElement('button');
+                btn.className = 'flex items-center gap-1.5 cursor-pointer hover:opacity-80';
+                var swatch = document.createElement('span');
+                swatch.className = 'inline-block w-2.5 h-2.5 rounded-full shrink-0';
+                swatch.style.backgroundColor = ds.borderColor || ds.backgroundColor || '#999';
+                btn.appendChild(swatch);
+                var lbl = document.createElement('span');
+                lbl.textContent = ds.label;
+                lbl.className = 'text-gray-600 dark:text-gray-300';
+                btn.appendChild(lbl);
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    if (chart.isDatasetVisible(i)) {
+                        chart.hide(i);
+                        lbl.style.textDecoration = 'line-through';
+                        lbl.style.opacity = '0.5';
+                    } else {
+                        chart.show(i);
+                        lbl.style.textDecoration = '';
+                        lbl.style.opacity = '1';
+                    }
+                };
+                el.appendChild(btn);
+            });
+            container.appendChild(el);
+        }
+    </script>
     <main class="max-w-4xl mx-auto px-4 py-6">
         {% if messages %}
         <div class="mb-4">
@@ -111,30 +144,30 @@
     <script>
         var _chartCards = [];
         function toggleChart(card) {
-            card.classList.toggle('expanded');
+            if (card.classList.contains('expanded')) return;
+            card.classList.add('expanded');
+            var backdrop = document.getElementById('chartOverlayBackdrop');
+            backdrop.classList.add('active');
+            _chartCards.push(card);
+            var canvas = card.querySelector('canvas');
+            var ch = canvas && Chart.getChart(canvas.id);
+            if (ch) setTimeout(function() { ch.resize(); }, 50);
+        }
+        function closeChart(card) {
+            card.classList.remove('expanded');
             var backdrop = document.getElementById('chartOverlayBackdrop');
             var canvas = card.querySelector('canvas');
             var ch = canvas && Chart.getChart(canvas.id);
-            if (card.classList.contains('expanded')) {
-                backdrop.classList.add('active');
-                _chartCards.push(card);
-                if (ch) setTimeout(function() { ch.resize(); }, 50);
-            } else {
-                var idx = _chartCards.indexOf(card);
-                if (idx >= 0) _chartCards.splice(idx, 1);
-                if (!_chartCards.length) backdrop.classList.remove('active');
-                if (ch) ch.resize();
-            }
+            var idx = _chartCards.indexOf(card);
+            if (idx >= 0) _chartCards.splice(idx, 1);
+            if (!_chartCards.length) backdrop.classList.remove('active');
+            if (ch) ch.resize();
         }
         function closeAllCharts() {
             var backdrop = document.getElementById('chartOverlayBackdrop');
             backdrop.classList.remove('active');
             for (var i = _chartCards.length - 1; i >= 0; i--) {
-                var card = _chartCards[i];
-                card.classList.remove('expanded');
-                var canvas = card.querySelector('canvas');
-                var ch = canvas && Chart.getChart(canvas.id);
-                if (ch) ch.resize();
+                closeChart(_chartCards[i]);
             }
             _chartCards = [];
         }
